@@ -1,17 +1,15 @@
-﻿using System;
+using System;
 using System.Numerics;
-using Dalamud.Interface.Internal;
-using Dalamud.Interface.Utility;
+using Dalamud.Game.Gui.Toast;
 using Dalamud.Interface.Windowing;
-using Dalamud.Plugin.Services;
 using ImGuiNET;
 
 namespace SamplePlugin.Windows;
 
 public class MainWindow : Window, IDisposable
 {
-    private string GoatImagePath;
-    private ItemToastsPlugin Plugin;
+    private readonly ItemToastsPlugin plugin;
+    private bool displayed = false;
 
     // We give this window a hidden ID using ##
     // So that the user will see "My Amazing Window" as window title,
@@ -25,34 +23,21 @@ public class MainWindow : Window, IDisposable
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
         };
 
-        GoatImagePath = goatImagePath;
-        Plugin = plugin;
+        this.plugin = plugin;
+    }
+
+    private void ShowToast()
+    {
+        if (plugin != null && !displayed) {
+            ItemToastsPlugin.ToastGui.ShowQuest("Test toast", new QuestToastOptions { IconId = 60858, PlaySound = false, Position = QuestToastPosition.Left });
+            displayed = true;
+        }
     }
 
     public void Dispose() { }
 
     public override void Draw()
     {
-        ImGui.Text($"The random config bool is {Plugin.Configuration.SomePropertyToBeSavedAndWithADefault}");
-
-        if (ImGui.Button("Show Settings"))
-        {
-            Plugin.ToggleConfigUI();
-        }
-
-        ImGui.Spacing();
-
-        ImGui.Text("Have a goat:");
-        var goatImage = ItemToastsPlugin.TextureProvider.GetFromFile(GoatImagePath).GetWrapOrDefault();
-        if (goatImage != null)
-        {
-            ImGuiHelpers.ScaledIndent(55f);
-            ImGui.Image(goatImage.ImGuiHandle, new Vector2(goatImage.Width, goatImage.Height));
-            ImGuiHelpers.ScaledIndent(-55f);
-        }
-        else
-        {
-            ImGui.Text("Image not found.");
-        }
+        ShowToast();            
     }
 }

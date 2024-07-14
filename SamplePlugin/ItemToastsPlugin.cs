@@ -13,6 +13,7 @@ public sealed class ItemToastsPlugin : IDalamudPlugin
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
+    [PluginService] public static IToastGui ToastGui { get; private set; } = null!;
 
     private const string CommandName = "/itemtoasts";
 
