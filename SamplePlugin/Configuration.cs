@@ -1,5 +1,4 @@
-﻿using Dalamud.Configuration;
-using Dalamud.Plugin;
+using Dalamud.Configuration;
 using System;
 
 namespace SamplePlugin;
@@ -9,8 +8,17 @@ public class Configuration : IPluginConfiguration
 {
     public int Version { get; set; } = 0;
 
-    public bool IsConfigWindowMovable { get; set; } = true;
-    public bool SomePropertyToBeSavedAndWithADefault { get; set; } = true;
+    public bool ShowInventory { get; set; } = true;
+    
+    public bool ShowCurrency { get; set; } = true;
+
+    public bool ShowCrystals { get; set; } = true;
+
+    public bool ShowKeyItems { get; set; } = true;
+
+    public bool ShowCommendations { get; set; } = false;
+
+    public bool ShowReputation { get; set; } = false;
 
     // the below exist just to make saving less cumbersome
     public void Save()

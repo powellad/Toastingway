@@ -1,10 +1,18 @@
 using Dalamud.Game.Command;
 using Dalamud.IoC;
 using Dalamud.Plugin;
-using System.IO;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using SamplePlugin.Windows;
+using Dalamud.Game.Inventory.InventoryEventArgTypes;
+using Dalamud.Game.Gui.Toast;
+using Dalamud.Game.Inventory;
+using FFXIVClientStructs.FFXIV.Client.Game.Fate;
+using Lumina.Excel.GeneratedSheets;
+using System.Collections.Generic;
+using System;
+//using Lumina.Excel.GeneratedSheets2;
+
 
 namespace SamplePlugin;
 
@@ -14,41 +22,50 @@ public sealed class ItemToastsPlugin : IDalamudPlugin
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
     [PluginService] public static IToastGui ToastGui { get; private set; } = null!;
+    [PluginService] internal static IAddonEventManager EventManager { get; private set; } = null!;
+    [PluginService] internal static IAddonLifecycle AddonLifecycle { get; private set; } = null!;
+    [PluginService] internal static IGameInventory GameInventory { get; private set; } = null!;
+    [PluginService] internal static IPluginLog PluginLog { get; private set; } = null!;
+    [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
 
-    private const string CommandName = "/itemtoasts";
+
+    private const string CommandName = "/it";
 
     public Configuration Configuration { get; init; }
 
     public readonly WindowSystem WindowSystem = new("ItemToastsPlugin");
     private ConfigWindow ConfigWindow { get; init; }
-    private MainWindow MainWindow { get; init; }
-
+    
     public ItemToastsPlugin()
     {
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
-        // you might normally want to embed resources and load them from the manifest stream
-        var goatImagePath = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "goat.png");
-
         ConfigWindow = new ConfigWindow(this);
-        MainWindow = new MainWindow(this, goatImagePath);
 
         WindowSystem.AddWindow(ConfigWindow);
-        WindowSystem.AddWindow(MainWindow);
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "A useful message to display in /xlhelp"
+            HelpMessage = "Some simple toasts to display new items, crystals, currency, and reputation."
         });
 
         PluginInterface.UiBuilder.Draw += DrawUI;
 
-        // This adds a button to the plugin installer entry of this plugin which allows
-        // to toggle the display status of the configuration ui
+        // Always open config.
         PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
+        PluginInterface.UiBuilder.OpenMainUi += ToggleConfigUI;
 
-        // Adds another button that is doing the same but for the main ui of the plugin
-        PluginInterface.UiBuilder.OpenMainUi += ToggleMainUI;
+        GameInventory.InventoryChanged += OnItemChanged;
+        //GameInventory.ItemAddedExplicit += OnItemAdded;
+    }
+
+    private void OnItemChanged(IReadOnlyCollection<InventoryEventArgs> events)
+    {
+        foreach (var item in events)
+        {
+            //PluginLog.Info($"Item change type: {item.Type}");
+            OnItemChanged(item);
+        }
     }
 
     public void Dispose()
@@ -56,19 +73,89 @@ public sealed class ItemToastsPlugin : IDalamudPlugin
         WindowSystem.RemoveAllWindows();
 
         ConfigWindow.Dispose();
-        MainWindow.Dispose();
 
         CommandManager.RemoveHandler(CommandName);
+
+        //GameInventory.ItemAddedExplicit -= OnItemAdded;
+        GameInventory.ItemChangedExplicit -= OnItemChanged;
     }
 
     private void OnCommand(string command, string args)
     {
-        // in response to the slash command, just toggle the display status of our main ui
-        ToggleMainUI();
+        ToggleConfigUI();
     }
 
     private void DrawUI() => WindowSystem.Draw();
 
     public void ToggleConfigUI() => ConfigWindow.Toggle();
-    public void ToggleMainUI() => MainWindow.Toggle();
+
+    private bool ShouldShow(GameInventoryType inventory)
+    {
+        // TODO: Missing rep still
+        // TODO: Commendations?
+        return ShouldShowInventory(inventory) ||
+            ShouldShowCurrency(inventory) ||
+            ShouldShowCrystals(inventory) ||
+            ShouldShowKeyItems(inventory);
+    }
+
+    private bool ShouldShowInventory(GameInventoryType incomingType)
+    {
+        return Configuration.ShowInventory &&
+            (incomingType == GameInventoryType.Inventory1 ||
+            incomingType == GameInventoryType.Inventory2 ||
+            incomingType == GameInventoryType.Inventory3 ||
+            incomingType == GameInventoryType.Inventory4);
+    }
+
+    private bool ShouldShowCurrency(GameInventoryType incomingType)
+    {
+        //PluginLog.Info($"Currency: {Configuration.ShowCurrency && incomingType == GameInventoryType.Currency}");
+        return Configuration.ShowCurrency && incomingType == GameInventoryType.Currency;
+    }
+
+    private bool ShouldShowCrystals(GameInventoryType incomingType)
+    {
+        //PluginLog.Info($"Crystals: {Configuration.ShowCrystals && incomingType == GameInventoryType.Crystals}");
+        return Configuration.ShowCrystals && incomingType == GameInventoryType.Crystals;
+    }
+
+    private bool ShouldShowKeyItems(GameInventoryType incomingType)
+    {
+        //PluginLog.Info($"ShowKeyItems: {Configuration.ShowKeyItems && incomingType == GameInventoryType.KeyItems}");
+        return Configuration.ShowKeyItems && incomingType == GameInventoryType.KeyItems;
+    }
+
+    private void OnItemAdded(InventoryItemAddedArgs args)
+    {
+        PluginLog.Info($"Item change type: {args}");
+        if (ShouldShow(args.Inventory))
+        {
+            PluginLog.Info($"Added: Item type: {args.Type}");
+            HandleItemDisplay(args.Item.ItemId, args.Item.Quantity);
+        }
+    }
+
+    private void OnItemChanged(InventoryEventArgs args)
+    {
+        if (ShouldShow(args.Item.ContainerType) && (args.Type == GameInventoryEvent.Added || args.Type == GameInventoryEvent.Changed))
+        {
+            PluginLog.Info($"Changed: Item type: {args.Type}");
+            HandleItemDisplay(args.Item.ItemId, args.Item.Quantity);
+        }
+    }
+
+    private void HandleItemDisplay(uint itemId, uint quantity)
+    {
+        var item = DataManager.GetExcelSheet<Item>()?.GetRow(itemId);
+
+        if (item is null)
+        {
+            return;
+        }
+
+        var quantityString = quantity > 1 ? $"({quantity})" : string.Empty;
+
+        ToastGui.ShowQuest($"{item.Name} {quantityString}", new QuestToastOptions { IconId = item.Icon, PlaySound = false, Position = QuestToastPosition.Left });
+    }
 }

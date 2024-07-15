@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Numerics;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
@@ -7,7 +7,7 @@ namespace SamplePlugin.Windows;
 
 public class ConfigWindow : Window, IDisposable
 {
-    private Configuration Configuration;
+    private Configuration configuration;
 
     // We give this window a constant ID using ###
     // This allows for labels being dynamic, like "{FPS Counter}fps###XYZ counter window",
@@ -20,40 +20,45 @@ public class ConfigWindow : Window, IDisposable
         Size = new Vector2(232, 90);
         SizeCondition = ImGuiCond.Always;
 
-        Configuration = plugin.Configuration;
+        configuration = plugin.Configuration;
     }
 
     public void Dispose() { }
 
     public override void PreDraw()
     {
-        // Flags must be added or removed before Draw() is being called, or they won't apply
-        if (Configuration.IsConfigWindowMovable)
-        {
-            Flags &= ~ImGuiWindowFlags.NoMove;
-        }
-        else
-        {
-            Flags |= ImGuiWindowFlags.NoMove;
-        }
     }
 
     public override void Draw()
     {
-        // can't ref a property, so use a local copy
-        var configValue = Configuration.SomePropertyToBeSavedAndWithADefault;
-        if (ImGui.Checkbox("Random Config Bool", ref configValue))
+        var showInventory = configuration.ShowInventory;
+        if (ImGui.Checkbox("Show toasts for new inventory items", ref showInventory))
         {
-            Configuration.SomePropertyToBeSavedAndWithADefault = configValue;
-            // can save immediately on change, if you don't want to provide a "Save and Close" button
-            Configuration.Save();
+            configuration.ShowInventory = showInventory;
+            configuration.Save();
         }
 
-        var movable = Configuration.IsConfigWindowMovable;
-        if (ImGui.Checkbox("Movable Config Window", ref movable))
+        var showCurrency = configuration.ShowCurrency;
+        if (ImGui.Checkbox("Show toasts for new currency", ref showCurrency))
         {
-            Configuration.IsConfigWindowMovable = movable;
-            Configuration.Save();
+            configuration.ShowCurrency = showCurrency;
+            configuration.Save();
         }
+
+        var showCrystals = configuration.ShowCrystals;
+        if (ImGui.Checkbox("Show toasts for new crystals", ref showCrystals))
+        {
+            configuration.ShowCrystals = showCrystals;
+            configuration.Save();
+        }
+
+        var showReputation = configuration.ShowReputation;
+        if (ImGui.Checkbox("Show toasts for reputation gains", ref showReputation))
+        {
+            configuration.ShowReputation = showReputation;
+            configuration.Save();
+        }
+
+        // TODO: Other stuff.
     }
 }
