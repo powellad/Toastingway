@@ -7,12 +7,10 @@ using SamplePlugin.Windows;
 using Dalamud.Game.Inventory.InventoryEventArgTypes;
 using Dalamud.Game.Gui.Toast;
 using Dalamud.Game.Inventory;
-using FFXIVClientStructs.FFXIV.Client.Game.Fate;
-using Lumina.Excel.GeneratedSheets;
 using System.Collections.Generic;
 using System;
 using FFXIVClientStructs.FFXIV.Client.Game;
-//using Lumina.Excel.GeneratedSheets2;
+using Lumina.Excel.GeneratedSheets;
 
 // Current issues:
 // 1. Double display on gathering
@@ -83,29 +81,31 @@ public sealed class ItemToastsPlugin : IDalamudPlugin
 
     private unsafe void SetBagInventory(InventoryContainer* bag)
     {
-        PluginLog.Debug($"Bag {bag->Type} with size {bag->Size}");
+        PluginLog.Debug($"Processing bag {bag->Type}.");
         for (var index = 0; index < bag->Size; index++)
         {
             var item = bag->Items[index];
 
-            PluginLog.Debug($"  Item: {item.ItemId}, Quantity: {item.Quantity}");
-            if (item.ItemId > 0)
-            {
-                if (!inMemoryCounts.TryAdd(item.ItemId, item.Quantity))
-                {
-                    PluginLog.Debug($"Added ItemID to existing {item.ItemId}");
-                    inMemoryCounts[item.ItemId] += item.Quantity;
-                }
-            }
+            //PluginLog.Debug($"  Item: {item.ItemId}, Quantity: {item.Quantity}");
+            UpdateCount(item.ItemId, item.Quantity);
         }
     }
 
-    private void OnItemChangedRaw(IReadOnlyCollection<InventoryEventArgs> events)
+    private unsafe void UpdateCount(uint itemId, uint quantity, bool replace = false)
     {
-        foreach (var item in events)
+        if (itemId > 0)
         {
-            //PluginLog.Info($"Item change type: {item.Type}");
-            OnItemChanged(item);
+            if (!inMemoryCounts.TryAdd(itemId, quantity))
+            {
+                if (!replace)
+                {
+                    inMemoryCounts[itemId] += quantity;
+                }
+                else
+                {
+                    inMemoryCounts[itemId] = quantity;
+                }
+            }
         }
     }
 
@@ -170,35 +170,49 @@ public sealed class ItemToastsPlugin : IDalamudPlugin
 
     private bool ShouldShowKeyItems(GameInventoryType incomingType)
     {
-        return incomingType == GameInventoryType.KeyItems;
-        //return Configuration.ShowKeyItems && incomingType == GameInventoryType.KeyItems;
+        return Configuration.ShowKeyItems && incomingType == GameInventoryType.KeyItems;
     }
 
     private void OnItemAdded(InventoryItemAddedArgs args)
     {
+        PluginLog.Verbose($"Added: Item type: {args.Type} by {args.Item.Quantity} in bag {args.Item.ContainerType}");
         if (ShouldShow(args.Inventory))
         {
-            PluginLog.Info($"Added: Item type: {args.Type}");
+            PluginLog.Verbose($"Showing: {args.Item.ItemId}");
             HandleItemDisplay(args.Item.ItemId, args.Item.Quantity);
         }
+
+        UpdateCount(args.Item.ItemId, args.Item.Quantity, true);
     }
 
     private void OnItemChanged(InventoryEventArgs args)
     {
-        PluginLog.Debug($"Changed: Item type: {args}");
+        PluginLog.Verbose($"Changed: Item type: {args.Type} by {args.Item.Quantity} in bag {args.Item.ContainerType}");
         if (ShouldShow(args.Item.ContainerType) && args.Type == GameInventoryEvent.Changed)
         {
-            PluginLog.Info($"Changed: Item type: {args.Type} by {args.Item.Quantity}");
-            HandleItemDisplay(args.Item.ItemId, args.Item.Quantity);
+            if (inMemoryCounts.TryGetValue(args.Item.ItemId, out var currentCount))
+            {
+                var difference = (int)args.Item.Quantity - (int)currentCount;
+
+                PluginLog.Verbose($"Current: {currentCount}, New: {args.Item.Quantity}");
+                if (difference > 0) // Means something has been gained, so show the toast.
+                {
+                    PluginLog.Verbose($"Showing: {args.Item.ItemId}");
+                    HandleItemDisplay(args.Item.ItemId, args.Item.Quantity);
+                }
+            }
         }
+
+        UpdateCount(args.Item.ItemId, args.Item.Quantity, true);
     }
 
-    private void HandleItemDisplay(uint itemId, uint quantity)
+    private static void HandleItemDisplay(uint itemId, uint quantity)
     {
         var item = DataManager.GetExcelSheet<Item>()?.GetRow(itemId);
 
         if (item is null)
         {
+            PluginLog.Verbose($"Couldn't find item: {itemId}.");
             return;
         }
 
