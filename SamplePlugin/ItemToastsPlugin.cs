@@ -57,6 +57,14 @@ public sealed class ItemToastsPlugin : IDalamudPlugin
 
         GameInventory.InventoryChanged += OnItemChanged;
         //GameInventory.ItemAddedExplicit += OnItemAdded;
+
+    private void OnItemChangedRaw(IReadOnlyCollection<InventoryEventArgs> events)
+    {
+        foreach (var item in events)
+        {
+            //PluginLog.Info($"Item change type: {item.Type}");
+            OnItemChanged(item);
+        }
     }
 
     private void OnItemChanged(IReadOnlyCollection<InventoryEventArgs> events)
@@ -76,7 +84,7 @@ public sealed class ItemToastsPlugin : IDalamudPlugin
 
         CommandManager.RemoveHandler(CommandName);
 
-        //GameInventory.ItemAddedExplicit -= OnItemAdded;
+        GameInventory.ItemAddedExplicit -= OnItemAdded;
         GameInventory.ItemChangedExplicit -= OnItemChanged;
     }
 
@@ -110,25 +118,22 @@ public sealed class ItemToastsPlugin : IDalamudPlugin
 
     private bool ShouldShowCurrency(GameInventoryType incomingType)
     {
-        //PluginLog.Info($"Currency: {Configuration.ShowCurrency && incomingType == GameInventoryType.Currency}");
         return Configuration.ShowCurrency && incomingType == GameInventoryType.Currency;
     }
 
     private bool ShouldShowCrystals(GameInventoryType incomingType)
     {
-        //PluginLog.Info($"Crystals: {Configuration.ShowCrystals && incomingType == GameInventoryType.Crystals}");
         return Configuration.ShowCrystals && incomingType == GameInventoryType.Crystals;
     }
 
     private bool ShouldShowKeyItems(GameInventoryType incomingType)
     {
-        //PluginLog.Info($"ShowKeyItems: {Configuration.ShowKeyItems && incomingType == GameInventoryType.KeyItems}");
-        return Configuration.ShowKeyItems && incomingType == GameInventoryType.KeyItems;
+        return incomingType == GameInventoryType.KeyItems;
+        //return Configuration.ShowKeyItems && incomingType == GameInventoryType.KeyItems;
     }
 
     private void OnItemAdded(InventoryItemAddedArgs args)
     {
-        PluginLog.Info($"Item change type: {args}");
         if (ShouldShow(args.Inventory))
         {
             PluginLog.Info($"Added: Item type: {args.Type}");
@@ -138,9 +143,10 @@ public sealed class ItemToastsPlugin : IDalamudPlugin
 
     private void OnItemChanged(InventoryEventArgs args)
     {
-        if (ShouldShow(args.Item.ContainerType) && (args.Type == GameInventoryEvent.Added || args.Type == GameInventoryEvent.Changed))
+        PluginLog.Debug($"Changed: Item type: {args}");
+        if (ShouldShow(args.Item.ContainerType) && args.Type == GameInventoryEvent.Changed)
         {
-            PluginLog.Info($"Changed: Item type: {args.Type}");
+            PluginLog.Info($"Changed: Item type: {args.Type} by {args.Item.Quantity}");
             HandleItemDisplay(args.Item.ItemId, args.Item.Quantity);
         }
     }
