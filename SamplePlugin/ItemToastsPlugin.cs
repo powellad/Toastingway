@@ -11,8 +11,14 @@ using FFXIVClientStructs.FFXIV.Client.Game.Fate;
 using Lumina.Excel.GeneratedSheets;
 using System.Collections.Generic;
 using System;
+using FFXIVClientStructs.FFXIV.Client.Game;
 //using Lumina.Excel.GeneratedSheets2;
 
+// Current issues:
+// 1. Double display on gathering
+// 2. Changed also means removed, which means it'll show when things are removed (e.g. gil or cereleum tanks)
+// 3. Commendations doesn't seem possible
+// 4. Is reputation possible?
 
 namespace SamplePlugin;
 
@@ -35,6 +41,8 @@ public sealed class ItemToastsPlugin : IDalamudPlugin
 
     public readonly WindowSystem WindowSystem = new("ItemToastsPlugin");
     private ConfigWindow ConfigWindow { get; init; }
+
+    private readonly Dictionary<uint, uint> inMemoryCounts = [];
     
     public ItemToastsPlugin()
     {
@@ -55,8 +63,42 @@ public sealed class ItemToastsPlugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
         PluginInterface.UiBuilder.OpenMainUi += ToggleConfigUI;
 
+        //GameInventory.InventoryChangedRaw += OnItemChangedRaw;
         GameInventory.InventoryChanged += OnItemChanged;
-        //GameInventory.ItemAddedExplicit += OnItemAdded;
+        GameInventory.ItemAddedExplicit += OnItemAdded;
+
+        SetInventoryCounts();
+    }
+
+    private unsafe void SetInventoryCounts()
+    {
+        SetBagInventory(InventoryManager.Instance()->GetInventoryContainer(InventoryType.Inventory1));
+        SetBagInventory(InventoryManager.Instance()->GetInventoryContainer(InventoryType.Inventory2));
+        SetBagInventory(InventoryManager.Instance()->GetInventoryContainer(InventoryType.Inventory3));
+        SetBagInventory(InventoryManager.Instance()->GetInventoryContainer(InventoryType.Inventory4));
+        SetBagInventory(InventoryManager.Instance()->GetInventoryContainer(InventoryType.Crystals));
+        SetBagInventory(InventoryManager.Instance()->GetInventoryContainer(InventoryType.Currency));
+        SetBagInventory(InventoryManager.Instance()->GetInventoryContainer(InventoryType.KeyItems));
+    }
+
+    private unsafe void SetBagInventory(InventoryContainer* bag)
+    {
+        PluginLog.Debug($"Bag {bag->Type} with size {bag->Size}");
+        for (var index = 0; index < bag->Size; index++)
+        {
+            var item = bag->Items[index];
+
+            PluginLog.Debug($"  Item: {item.ItemId}, Quantity: {item.Quantity}");
+            if (item.ItemId > 0)
+            {
+                if (!inMemoryCounts.TryAdd(item.ItemId, item.Quantity))
+                {
+                    PluginLog.Debug($"Added ItemID to existing {item.ItemId}");
+                    inMemoryCounts[item.ItemId] += item.Quantity;
+                }
+            }
+        }
+    }
 
     private void OnItemChangedRaw(IReadOnlyCollection<InventoryEventArgs> events)
     {
