@@ -1,8 +1,8 @@
 {
     "Author": "Stonewind",
     "Name": "Toastingway",
-    "Punchline": "Display new items in a toast-like feed.",
-    "Description": "Displays new items you in toast-like feed. To configure: /tw",
+    "Punchline": "Keep on top of new items.",
+    "Description": "Displays new items, crystals, and gil as toasts.",
     "ApplicableVersion": "any",
     "Tags": [
         "item",

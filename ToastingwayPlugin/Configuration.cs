@@ -1,4 +1,5 @@
 using Dalamud.Configuration;
+using Dalamud.Game.Gui.Toast;
 using System;
 
 namespace Toastingway;
@@ -13,6 +14,8 @@ public class Configuration : IPluginConfiguration
     public bool ShowCurrency { get; set; } = true;
 
     public bool ShowCrystals { get; set; } = true;
+
+    public QuestToastPosition ToastPosition { get; set; } = QuestToastPosition.Left;
 
     public void Save()
     {

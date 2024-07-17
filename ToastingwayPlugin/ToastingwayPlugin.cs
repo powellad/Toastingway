@@ -15,6 +15,7 @@ using Lumina.Excel.GeneratedSheets;
 // Wish list:
 // 1. Beast tribe reputation and currency (not in Dalamud API yet)
 // 2. Commendations (not in Dalamud API yet)
+// 3. HQ/NQ distinction
 
 // Current issues:
 // 1. Double display on gathering
@@ -55,12 +56,11 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
-            HelpMessage = "Some simple toasts to display new items, crystals, currency, and reputation."
+            HelpMessage = "Open configuration"
         });
 
         PluginInterface.UiBuilder.Draw += DrawUI;
 
-        // Always open config.
         PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
         PluginInterface.UiBuilder.OpenMainUi += ToggleConfigUI;
 
@@ -211,6 +211,6 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
         var quantityString = quantity > 1 ? $"({quantity:N0})" : string.Empty;
 
         PluginLog.Verbose($"Showing: {item.Name} with quantity {quantityString}");
-        ToastGui.ShowQuest($"{item.Name} {quantityString}", new QuestToastOptions { IconId = item.Icon, PlaySound = false, Position = QuestToastPosition.Left });
+        ToastGui.ShowQuest($"{item.Name} {quantityString}", new QuestToastOptions { IconId = item.Icon, PlaySound = false, Position = Configuration.ToastPosition });
     }
 }

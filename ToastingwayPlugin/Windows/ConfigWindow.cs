@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using Dalamud.Game.Gui.Toast;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
 
@@ -14,7 +15,7 @@ public class ConfigWindow : Window, IDisposable
         Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
                 ImGuiWindowFlags.NoScrollWithMouse;
 
-        Size = new Vector2(232, 300);
+        Size = new Vector2(330, 155);
         SizeCondition = ImGuiCond.Always;
 
         configuration = plugin.Configuration;
@@ -49,6 +50,12 @@ public class ConfigWindow : Window, IDisposable
             configuration.Save();
         }
 
-        // TODO: Dropdown for location
+        var selectedPosition = (int)configuration.ToastPosition;
+        var positionNames = Enum.GetNames<QuestToastPosition>();        
+        if (ImGui.Combo("Toast position", ref selectedPosition, positionNames, positionNames.Length))
+        {
+            configuration.ToastPosition = (QuestToastPosition)selectedPosition;
+            configuration.Save();
+        }        
     }
 }
