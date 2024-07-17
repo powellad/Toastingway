@@ -78,7 +78,6 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
         SetBagInventory(InventoryManager.Instance()->GetInventoryContainer(InventoryType.Inventory4));
         SetBagInventory(InventoryManager.Instance()->GetInventoryContainer(InventoryType.Crystals));
         SetBagInventory(InventoryManager.Instance()->GetInventoryContainer(InventoryType.Currency));
-        SetBagInventory(InventoryManager.Instance()->GetInventoryContainer(InventoryType.KeyItems));
     }
 
     private unsafe void SetBagInventory(InventoryContainer* bag)
