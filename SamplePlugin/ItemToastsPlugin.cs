@@ -12,11 +12,14 @@ using System;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using Lumina.Excel.GeneratedSheets;
 
+// Wish list:
+// 1. Beast tribe reputation and currency (not in Dalamud API yet)
+// 2. Commendations (not in Dalamud API yet)
+
 // Current issues:
 // 1. Double display on gathering
-// 2. Changed also means removed, which means it'll show when things are removed (e.g. gil or cereleum tanks)
-// 3. Commendations doesn't seem possible
-// 4. Is reputation possible?
+// 2. Venture coffers don't work
+// 3. Collectibles not quite working. I think toasts need to work off my inMemory dict.
 
 namespace SamplePlugin;
 
@@ -85,13 +88,11 @@ public sealed class ItemToastsPlugin : IDalamudPlugin
         for (var index = 0; index < bag->Size; index++)
         {
             var item = bag->Items[index];
-
-            //PluginLog.Debug($"  Item: {item.ItemId}, Quantity: {item.Quantity}");
-            UpdateCount(item.ItemId, item.Quantity);
+            UpdateCount(item.ItemId, item.Quantity, false);
         }
     }
 
-    private unsafe void UpdateCount(uint itemId, uint quantity, bool replace = false)
+    private unsafe void UpdateCount(uint itemId, uint quantity, bool replace = true)
     {
         if (itemId > 0)
         {
@@ -113,7 +114,6 @@ public sealed class ItemToastsPlugin : IDalamudPlugin
     {
         foreach (var item in events)
         {
-            //PluginLog.Info($"Item change type: {item.Type}");
             OnItemChanged(item);
         }
     }
@@ -141,12 +141,9 @@ public sealed class ItemToastsPlugin : IDalamudPlugin
 
     private bool ShouldShow(GameInventoryType inventory)
     {
-        // TODO: Missing rep still
-        // TODO: Commendations?
         return ShouldShowInventory(inventory) ||
             ShouldShowCurrency(inventory) ||
-            ShouldShowCrystals(inventory) ||
-            ShouldShowKeyItems(inventory);
+            ShouldShowCrystals(inventory);
     }
 
     private bool ShouldShowInventory(GameInventoryType incomingType)
@@ -168,56 +165,53 @@ public sealed class ItemToastsPlugin : IDalamudPlugin
         return Configuration.ShowCrystals && incomingType == GameInventoryType.Crystals;
     }
 
-    private bool ShouldShowKeyItems(GameInventoryType incomingType)
-    {
-        return Configuration.ShowKeyItems && incomingType == GameInventoryType.KeyItems;
-    }
-
     private void OnItemAdded(InventoryItemAddedArgs args)
     {
-        PluginLog.Verbose($"Added: Item type: {args.Type} by {args.Item.Quantity} in bag {args.Item.ContainerType}");
         if (ShouldShow(args.Inventory))
         {
-            PluginLog.Verbose($"Showing: {args.Item.ItemId}");
-            HandleItemDisplay(args.Item.ItemId, args.Item.Quantity);
-        }
+            PluginLog.Verbose($"OnItemAdded: Item {args.Item.ItemId}, Quantity: {args.Item.Quantity} into bag {args.Item.ContainerType}");
 
-        UpdateCount(args.Item.ItemId, args.Item.Quantity, true);
+            UpdateCount(args.Item.ItemId, args.Item.Quantity);
+
+            HandleItemDisplay(args.Item.ItemId);
+        }
     }
 
     private void OnItemChanged(InventoryEventArgs args)
     {
-        PluginLog.Verbose($"Changed: Item type: {args.Type} by {args.Item.Quantity} in bag {args.Item.ContainerType}");
         if (ShouldShow(args.Item.ContainerType) && args.Type == GameInventoryEvent.Changed)
         {
-            if (inMemoryCounts.TryGetValue(args.Item.ItemId, out var currentCount))
-            {
-                var difference = (int)args.Item.Quantity - (int)currentCount;
+            PluginLog.Verbose($"OnItemChanged: Item {args.Item.ItemId} changed by {args.Item.Quantity} into bag {args.Item.ContainerType}");
 
-                PluginLog.Verbose($"Current: {currentCount}, New: {args.Item.Quantity}");
-                if (difference > 0) // Means something has been gained, so show the toast.
-                {
-                    PluginLog.Verbose($"Showing: {args.Item.ItemId}");
-                    HandleItemDisplay(args.Item.ItemId, args.Item.Quantity);
-                }
+            var currentCount = inMemoryCounts.GetValueOrDefault(args.Item.ItemId);
+            UpdateCount(args.Item.ItemId, args.Item.Quantity);
+
+            var difference = (int)args.Item.Quantity - (int)currentCount;
+
+            PluginLog.Verbose($"Current: {currentCount}, New: {args.Item.Quantity}");
+            if (difference > 0) // Means something has been gained, so show the toast.
+            {
+                HandleItemDisplay(args.Item.ItemId);
             }
+
         }
 
-        UpdateCount(args.Item.ItemId, args.Item.Quantity, true);
     }
 
-    private static void HandleItemDisplay(uint itemId, uint quantity)
+    private void HandleItemDisplay(uint itemId)
     {
         var item = DataManager.GetExcelSheet<Item>()?.GetRow(itemId);
+        var quantity = inMemoryCounts.GetValueOrDefault(itemId);
 
-        if (item is null)
+        if (item is null || quantity == 0)
         {
-            PluginLog.Verbose($"Couldn't find item: {itemId}.");
+            PluginLog.Verbose($"Skipping toast. Couldn't find item: {itemId}.");
             return;
         }
 
         var quantityString = quantity > 1 ? $"({quantity})" : string.Empty;
 
+        PluginLog.Verbose($"Showing: {item.Name} with quantity {quantityString}");
         ToastGui.ShowQuest($"{item.Name} {quantityString}", new QuestToastOptions { IconId = item.Icon, PlaySound = false, Position = QuestToastPosition.Left });
     }
 }
