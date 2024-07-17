@@ -1,0 +1,13 @@
+{
+    "Author": "Stonewind",
+    "Name": "Toastingway",
+    "Punchline": "Keep on top of new items.",
+    "Description": "Displays new items, crystals, and gil as toasts.",
+    "ApplicableVersion": "any",
+    "Tags": [
+        "item",
+        "notification",
+        "toast",
+        "toastingway"
+    ]
+}
