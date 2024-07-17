@@ -4,6 +4,7 @@
     "Punchline": "Keep on top of new items.",
     "Description": "Displays new items, crystals, and gil as toasts.",
     "ApplicableVersion": "any",
+    "RepoUrl": "https://github.com/powellad/Toastingway",
     "Tags": [
         "item",
         "notification",

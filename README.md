@@ -18,4 +18,6 @@ A simple plugin to show some native toasts for items, crystals, or gil.
 
 ## Future to-do
 
-1. 
+1. Beast tribe reputation and currency (not in Dalamud API yet)
+1. Commendations (not in Dalamud API yet)
+1. HQ/NQ distinction
