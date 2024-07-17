@@ -1,7 +1,7 @@
 using Dalamud.Configuration;
 using System;
 
-namespace SamplePlugin;
+namespace Toastingway;
 
 [Serializable]
 public class Configuration : IPluginConfiguration
@@ -16,6 +16,6 @@ public class Configuration : IPluginConfiguration
 
     public void Save()
     {
-        ItemToastsPlugin.PluginInterface.SavePluginConfig(this);
+        ToastingwayPlugin.PluginInterface.SavePluginConfig(this);
     }
 }

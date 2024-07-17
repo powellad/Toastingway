@@ -1,0 +1,13 @@
+{
+    "Author": "Stonewind",
+    "Name": "Toastingway",
+    "Punchline": "Display new items in a toast-like feed.",
+    "Description": "Displays new items you in toast-like feed. To configure: /tw",
+    "ApplicableVersion": "any",
+    "Tags": [
+        "item",
+        "notification",
+        "toast",
+        "toastingway"
+    ]
+}

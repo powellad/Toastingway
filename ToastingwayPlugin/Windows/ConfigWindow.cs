@@ -3,16 +3,13 @@ using System.Numerics;
 using Dalamud.Interface.Windowing;
 using ImGuiNET;
 
-namespace SamplePlugin.Windows;
+namespace Toastingway.Windows;
 
 public class ConfigWindow : Window, IDisposable
 {
     private readonly Configuration configuration;
 
-    // We give this window a constant ID using ###
-    // This allows for labels being dynamic, like "{FPS Counter}fps###XYZ counter window",
-    // and the window ID will always be "###XYZ counter window" for ImGui
-    public ConfigWindow(ItemToastsPlugin plugin) : base("Toastingway Config###ToastingwayID")
+    public ConfigWindow(ToastingwayPlugin plugin) : base("Toastingway Config")
     {
         Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
                 ImGuiWindowFlags.NoScrollWithMouse;
@@ -51,5 +48,7 @@ public class ConfigWindow : Window, IDisposable
             configuration.ShowCrystals = showCrystals;
             configuration.Save();
         }
+
+        // TODO: Dropdown for location
     }
 }

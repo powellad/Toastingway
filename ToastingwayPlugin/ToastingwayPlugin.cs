@@ -3,7 +3,7 @@ using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
-using SamplePlugin.Windows;
+using Toastingway.Windows;
 using Dalamud.Game.Inventory.InventoryEventArgTypes;
 using Dalamud.Game.Gui.Toast;
 using Dalamud.Game.Inventory;
@@ -21,9 +21,9 @@ using Lumina.Excel.GeneratedSheets;
 // 2. Venture coffers don't work
 // 3. Collectibles not quite working. I think toasts need to work off my inMemory dict.
 
-namespace SamplePlugin;
+namespace Toastingway;
 
-public sealed class ItemToastsPlugin : IDalamudPlugin
+public sealed class ToastingwayPlugin : IDalamudPlugin
 {
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
@@ -36,16 +36,16 @@ public sealed class ItemToastsPlugin : IDalamudPlugin
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
 
 
-    private const string CommandName = "/it";
+    private const string CommandName = "/tw";
 
     public Configuration Configuration { get; init; }
 
-    public readonly WindowSystem WindowSystem = new("ItemToastsPlugin");
+    public readonly WindowSystem WindowSystem = new("ToastingwayPlugin");
     private ConfigWindow ConfigWindow { get; init; }
 
     private readonly Dictionary<uint, uint> inMemoryCounts = [];
     
-    public ItemToastsPlugin()
+    public ToastingwayPlugin()
     {
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
@@ -64,7 +64,6 @@ public sealed class ItemToastsPlugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
         PluginInterface.UiBuilder.OpenMainUi += ToggleConfigUI;
 
-        //GameInventory.InventoryChangedRaw += OnItemChangedRaw;
         GameInventory.InventoryChanged += OnItemChanged;
         GameInventory.ItemAddedExplicit += OnItemAdded;
 
@@ -209,7 +208,7 @@ public sealed class ItemToastsPlugin : IDalamudPlugin
             return;
         }
 
-        var quantityString = quantity > 1 ? $"({quantity})" : string.Empty;
+        var quantityString = quantity > 1 ? $"({quantity:N0})" : string.Empty;
 
         PluginLog.Verbose($"Showing: {item.Name} with quantity {quantityString}");
         ToastGui.ShowQuest($"{item.Name} {quantityString}", new QuestToastOptions { IconId = item.Icon, PlaySound = false, Position = QuestToastPosition.Left });
