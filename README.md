@@ -21,3 +21,8 @@ A simple plugin to show some native toasts for items, crystals, or gil.
 1. Beast tribe reputation and currency (not in Dalamud API yet)
 1. Commendations (not in Dalamud API yet)
 1. HQ/NQ distinction
+
+## Known issues
+
+1. Not quite working with collectibles.
+1. Double toasts when gathering.

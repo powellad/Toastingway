@@ -12,13 +12,13 @@ public class ConfigWindow : Window, IDisposable
 
     public ConfigWindow(ToastingwayPlugin plugin) : base("Toastingway Config")
     {
-        Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
+        this.Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
                 ImGuiWindowFlags.NoScrollWithMouse;
 
-        Size = new Vector2(330, 155);
-        SizeCondition = ImGuiCond.Always;
+        this.Size = new Vector2(330, 155);
+        this.SizeCondition = ImGuiCond.Always;
 
-        configuration = plugin.Configuration;
+        this.configuration = plugin.Configuration;
     }
 
     public void Dispose() { }
@@ -29,33 +29,33 @@ public class ConfigWindow : Window, IDisposable
 
     public override void Draw()
     {
-        var showInventory = configuration.ShowInventory;
+        var showInventory = this.configuration.ShowInventory;
         if (ImGui.Checkbox("Show toasts for new inventory items", ref showInventory))
         {
-            configuration.ShowInventory = showInventory;
-            configuration.Save();
+            this.configuration.ShowInventory = showInventory;
+            this.configuration.Save();
         }
 
-        var showCurrency = configuration.ShowCurrency;
+        var showCurrency = this.configuration.ShowCurrency;
         if (ImGui.Checkbox("Show toasts for new currency", ref showCurrency))
         {
-            configuration.ShowCurrency = showCurrency;
-            configuration.Save();
+            this.configuration.ShowCurrency = showCurrency;
+            this.configuration.Save();
         }
 
-        var showCrystals = configuration.ShowCrystals;
+        var showCrystals = this.configuration.ShowCrystals;
         if (ImGui.Checkbox("Show toasts for new crystals", ref showCrystals))
         {
-            configuration.ShowCrystals = showCrystals;
-            configuration.Save();
+            this.configuration.ShowCrystals = showCrystals;
+            this.configuration.Save();
         }
 
-        var selectedPosition = (int)configuration.ToastPosition;
+        var selectedPosition = (int)this.configuration.ToastPosition;
         var positionNames = Enum.GetNames<QuestToastPosition>();        
         if (ImGui.Combo("Toast position", ref selectedPosition, positionNames, positionNames.Length))
         {
-            configuration.ToastPosition = (QuestToastPosition)selectedPosition;
-            configuration.Save();
+            this.configuration.ToastPosition = (QuestToastPosition)selectedPosition;
+            this.configuration.Save();
         }        
     }
 }
