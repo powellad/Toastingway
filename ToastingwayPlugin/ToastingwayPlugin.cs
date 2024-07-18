@@ -11,8 +11,11 @@ using System.Collections.Generic;
 using System;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using Lumina.Excel.GeneratedSheets;
+using System.Linq;
 
 namespace Toastingway;
+
+// Issues when grabbing from other inventory: count isn't updated properly.
 
 public sealed class ToastingwayPlugin : IDalamudPlugin
 {
@@ -26,16 +29,18 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
     [PluginService] internal static IPluginLog PluginLog { get; private set; } = null!;
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
 
-
     private const string CommandName = "/tw";
 
     public Configuration Configuration { get; init; }
 
-    public readonly WindowSystem WindowSystem = new("ToastingwayPlugin");
+    public readonly WindowSystem WindowSystem = new("Toastingway");
 
     private ConfigWindow ConfigWindow { get; init; }
 
     private readonly Dictionary<uint, uint> inMemoryCounts = [];
+
+    private readonly IReadOnlyList<GameInventoryType> bagInventoryTypes = [GameInventoryType.Inventory1, GameInventoryType.Inventory2, GameInventoryType.Inventory3, GameInventoryType.Inventory4];
+    private readonly IReadOnlyList<GameInventoryType> allInventoryTypes = [GameInventoryType.Crystals, GameInventoryType.Currency, GameInventoryType.Inventory1, GameInventoryType.Inventory2, GameInventoryType.Inventory3, GameInventoryType.Inventory4];
     
     public ToastingwayPlugin()
     {
@@ -57,8 +62,15 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 
         GameInventory.InventoryChanged += this.OnItemChanged;
         GameInventory.ItemAddedExplicit += this.OnItemAdded;
+        GameInventory.ItemMovedExplicit += this.OnItemMoved;
+        GameInventory.ItemRemovedExplicit += this.OnItemRemoved;        
 
         this.SetInventoryCounts();
+    }
+
+    private bool IsPlayerInventory(GameInventoryType type)
+    {
+        return this.bagInventoryTypes.Contains(type);
     }
 
     private unsafe void SetInventoryCounts()
@@ -77,7 +89,12 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
         for (var index = 0; index < bag->Size; index++)
         {
             var item = bag->Items[index];
-            this.UpdateCount(item.ItemId, item.Quantity, false);
+
+            if (item.ItemId > 0)
+            {
+                PluginLog.Verbose($"Adding item: Item {item.ItemId}, Quantity: {item.Quantity}");
+                this.UpdateCount(item.ItemId, item.Quantity, false);
+            }
         }
     }
 
@@ -99,14 +116,6 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
         }
     }
 
-    private void OnItemChanged(IReadOnlyCollection<InventoryEventArgs> events)
-    {
-        foreach (var item in events)
-        {
-            this.OnItemChanged(item);
-        }
-    }
-
     public void Dispose()
     {
         this.WindowSystem.RemoveAllWindows();
@@ -117,6 +126,8 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 
         GameInventory.ItemAddedExplicit -= this.OnItemAdded;
         GameInventory.ItemChangedExplicit -= this.OnItemChanged;
+        GameInventory.ItemMovedExplicit -= this.OnItemMoved;
+        GameInventory.ItemRemovedExplicit -= this.OnItemRemoved;
     }
 
     private void OnCommand(string command, string args)
@@ -128,6 +139,11 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 
     public void ToggleConfigUI() => this.ConfigWindow.Toggle();
 
+    private bool ShouldProcess(GameInventoryType inventory)
+    {
+        return this.allInventoryTypes.Contains(inventory);
+    }
+
     private bool ShouldShow(GameInventoryType inventory)
     {
         return this.ShouldShowInventory(inventory) ||
@@ -137,11 +153,7 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 
     private bool ShouldShowInventory(GameInventoryType incomingType)
     {
-        return this.Configuration.ShowInventory &&
-            (incomingType == GameInventoryType.Inventory1 ||
-            incomingType == GameInventoryType.Inventory2 ||
-            incomingType == GameInventoryType.Inventory3 ||
-            incomingType == GameInventoryType.Inventory4);
+        return this.Configuration.ShowInventory && this.IsPlayerInventory(incomingType);
     }
 
     private bool ShouldShowCurrency(GameInventoryType incomingType)
@@ -154,8 +166,49 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
         return this.Configuration.ShowCrystals && incomingType == GameInventoryType.Crystals;
     }
 
+    private void OnItemRemoved(InventoryItemRemovedArgs data)
+    {
+        var item = data.Item;
+
+        if (!this.ShouldProcess(data.Inventory) || !this.IsPlayerInventory(data.Inventory))
+        {
+            return;
+        }
+
+        // Race condition here when discarding.
+        PluginLog.Verbose($"OnItemRemoved: Item {item.ItemId}, Quantity: {item.Quantity} into bag {item.ContainerType}: removed from {data.Inventory}");
+        this.inMemoryCounts[item.ItemId] = 0;
+    }
+
+    private void OnItemMoved(InventoryItemMovedArgs data)
+    {
+        var item = data.Item;
+
+        if ((data.TargetInventory == data.SourceInventory) || (this.IsPlayerInventory(data.TargetInventory) && (this.IsPlayerInventory(data.SourceInventory))))
+        {
+            return;
+        }
+
+        PluginLog.Verbose($"OnItemMoved: Item {item.ItemId}, Quantity: {item.Quantity}: moved from {data.SourceInventory} to {data.TargetInventory}");
+        if (this.IsPlayerInventory(data.SourceInventory))
+        {
+            PluginLog.Verbose($"OnItemMoved: Removed count for Item {item.ItemId}.");
+            this.inMemoryCounts[item.ItemId] = 0;
+        }
+        else if (this.IsPlayerInventory(data.TargetInventory))
+        {
+            PluginLog.Verbose($"OnItemMoved: Update count for Item {item.ItemId} ({item.Quantity}).");
+            this.inMemoryCounts[item.ItemId] = item.Quantity;
+        }
+    }
+
     private void OnItemAdded(InventoryItemAddedArgs args)
     {
+        if (!this.ShouldProcess(args.Inventory))
+        {
+            return;
+        }
+
         if (this.ShouldShow(args.Inventory))
         {
             PluginLog.Verbose($"OnItemAdded: Item {args.Item.ItemId}, Quantity: {args.Item.Quantity} into bag {args.Item.ContainerType}");
@@ -166,8 +219,21 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
         }
     }
 
+    private void OnItemChanged(IReadOnlyCollection<InventoryEventArgs> events)
+    {
+        foreach (var item in events)
+        {
+            this.OnItemChanged(item);
+        }
+    }
+
     private void OnItemChanged(InventoryEventArgs args)
     {
+        if (!this.ShouldProcess(args.Item.ContainerType))
+        {
+            return;
+        }
+
         if (this.ShouldShow(args.Item.ContainerType) && args.Type == GameInventoryEvent.Changed)
         {
             PluginLog.Verbose($"OnItemChanged: Item {args.Item.ItemId} changed by {args.Item.Quantity} into bag {args.Item.ContainerType}");
@@ -177,7 +243,7 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 
             var difference = (int)args.Item.Quantity - (int)currentCount;
 
-            PluginLog.Verbose($"Current: {currentCount}, New: {args.Item.Quantity}");
+            PluginLog.Verbose($"Quantity change: Current: {currentCount}, New: {args.Item.Quantity}");
             if (difference > 0) // Means something has been gained, so show the toast.
             {
                 this.HandleItemDisplay(args.Item.ItemId);
@@ -192,11 +258,11 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 
         if (item is null || quantity == 0)
         {
-            PluginLog.Verbose($"Skipping toast. Couldn't find item: {itemId}.");
+            PluginLog.Debug($"Skipping toast. Couldn't find item: {itemId}.");
             return;
         }
 
-        var quantityString = quantity > 1 ? $"({quantity:N0})" : string.Empty;
+        var quantityString = quantity > 1 || quantity == default ? $"({quantity:N0})" : string.Empty;
 
         PluginLog.Verbose($"Showing: {item.Name} with quantity {quantityString}");
         ToastGui.ShowQuest($"{item.Name} {quantityString}", new QuestToastOptions { IconId = item.Icon, PlaySound = false, Position = this.Configuration.ToastPosition });
