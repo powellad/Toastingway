@@ -15,8 +15,6 @@ using System.Linq;
 
 namespace Toastingway;
 
-// Issues when grabbing from other inventory: count isn't updated properly.
-
 public sealed class ToastingwayPlugin : IDalamudPlugin
 {
     [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
@@ -28,6 +26,7 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
     [PluginService] internal static IGameInventory GameInventory { get; private set; } = null!;
     [PluginService] internal static IPluginLog PluginLog { get; private set; } = null!;
     [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
+    [PluginService] public static IClientState ClientState { get; private set; } = null!;
 
     private const string CommandName = "/tw";
 
@@ -63,8 +62,34 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
         GameInventory.InventoryChanged += this.OnItemChanged;
         GameInventory.ItemAddedExplicit += this.OnItemAdded;
         GameInventory.ItemMovedExplicit += this.OnItemMoved;
-        GameInventory.ItemRemovedExplicit += this.OnItemRemoved;        
+        GameInventory.ItemRemovedExplicit += this.OnItemRemoved;
 
+        ClientState.Login += this.OnLogin;
+    }
+
+    public void Dispose()
+    {
+        this.WindowSystem.RemoveAllWindows();
+
+        this.ConfigWindow.Dispose();
+
+        CommandManager.RemoveHandler(CommandName);
+
+        PluginInterface.UiBuilder.Draw -= this.DrawUI;
+
+        PluginInterface.UiBuilder.OpenConfigUi -= this.ToggleConfigUI;
+        PluginInterface.UiBuilder.OpenMainUi -= this.ToggleConfigUI;
+
+        GameInventory.ItemAddedExplicit -= this.OnItemAdded;
+        GameInventory.ItemChangedExplicit -= this.OnItemChanged;
+        GameInventory.ItemMovedExplicit -= this.OnItemMoved;
+        GameInventory.ItemRemovedExplicit -= this.OnItemRemoved;
+
+        ClientState.Login -= this.OnLogin;
+    }
+
+    private void OnLogin()
+    {
         this.SetInventoryCounts();
     }
 
@@ -114,20 +139,6 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
                 }
             }
         }
-    }
-
-    public void Dispose()
-    {
-        this.WindowSystem.RemoveAllWindows();
-
-        this.ConfigWindow.Dispose();
-
-        CommandManager.RemoveHandler(CommandName);
-
-        GameInventory.ItemAddedExplicit -= this.OnItemAdded;
-        GameInventory.ItemChangedExplicit -= this.OnItemChanged;
-        GameInventory.ItemMovedExplicit -= this.OnItemMoved;
-        GameInventory.ItemRemovedExplicit -= this.OnItemRemoved;
     }
 
     private void OnCommand(string command, string args)
