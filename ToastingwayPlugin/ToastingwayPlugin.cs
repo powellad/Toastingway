@@ -52,7 +52,7 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 
     private ConfigWindow ConfigWindow { get; init; }
 
-    private readonly Dictionary<uint, uint> inMemoryCounts = [];
+    private readonly Dictionary<(uint, bool), uint> inMemoryCounts = new();
 
     private readonly IReadOnlyList<GameInventoryType> bagInventoryTypes =
     [
@@ -145,24 +145,24 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
             if (item.ItemId > 0)
             {
                 PluginLog.Verbose($"Adding item: Item {item.ItemId}, Quantity: {item.Quantity}");
-                this.UpdateCount(item.ItemId, (uint)item.Quantity, false);
+                this.UpdateCount(item.ItemId, (uint)item.Quantity, false, item.IsHighQuality());
             }
         }
     }
 
-    private void UpdateCount(uint itemId, uint quantity, bool replace = true)
+    private void UpdateCount(uint itemId, uint quantity, bool replace = true, bool hq = false)
     {
         if (itemId > 0)
         {
-            if (!this.inMemoryCounts.TryAdd(itemId, quantity))
+            if (!this.inMemoryCounts.TryAdd((itemId, hq), quantity))
             {
                 if (!replace)
                 {
-                    this.inMemoryCounts[itemId] += quantity;
+                    this.inMemoryCounts[(itemId, hq)] += quantity;
                 }
                 else
                 {
-                    this.inMemoryCounts[itemId] = quantity;
+                    this.inMemoryCounts[(itemId, hq)] = quantity;
                 }
             }
         }
@@ -216,7 +216,7 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
         // Race condition here when discarding.
         PluginLog.Verbose(
             $"OnItemRemoved: Item {item.ItemId}, Quantity: {item.Quantity} into bag {item.ContainerType}: removed from {data.Inventory}");
-        this.inMemoryCounts[item.ItemId] = 0;
+        this.inMemoryCounts[(item.ItemId, item.IsHq)] = 0;
     }
 
     private void OnItemMoved(InventoryItemMovedArgs data)
@@ -234,12 +234,12 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
         if (this.IsPlayerInventory(data.SourceInventory))
         {
             PluginLog.Verbose($"OnItemMoved: Removed count for Item {item.ItemId}.");
-            this.inMemoryCounts[item.ItemId] = 0;
+            this.inMemoryCounts[(item.ItemId, item.IsHq)] = 0;
         }
         else if (this.IsPlayerInventory(data.TargetInventory))
         {
             PluginLog.Verbose($"OnItemMoved: Update count for Item {item.ItemId} ({item.Quantity}).");
-            this.inMemoryCounts[item.ItemId] = (uint)item.Quantity;
+            this.inMemoryCounts[(item.ItemId, item.IsHq)] = (uint)item.Quantity;
         }
     }
 
@@ -257,7 +257,7 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 
             this.UpdateCount(args.Item.ItemId, (uint)args.Item.Quantity);
 
-            this.HandleItemDisplay(args.Item.ItemId);
+            this.HandleItemDisplay(args.Item.ItemId, args.Item.IsHq);
         }
     }
 
@@ -281,7 +281,7 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
             PluginLog.Verbose(
                 $"OnItemChanged: Item {args.Item.ItemId} changed by {args.Item.Quantity} into bag {args.Item.ContainerType}");
 
-            var currentCount = this.inMemoryCounts.GetValueOrDefault(args.Item.ItemId);
+            var currentCount = this.inMemoryCounts.GetValueOrDefault((args.Item.ItemId, args.Item.IsHq));
             this.UpdateCount(args.Item.ItemId, (uint)args.Item.Quantity);
 
             var difference = args.Item.Quantity - (int)currentCount;
@@ -289,15 +289,15 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
             PluginLog.Verbose($"Quantity change: Current: {currentCount}, New: {args.Item.Quantity}");
             if (difference > 0) // Means something has been gained, so show the toast.
             {
-                this.HandleItemDisplay(args.Item.ItemId);
+                this.HandleItemDisplay(args.Item.ItemId, args.Item.IsHq);
             }
         }
     }
 
-    private void HandleItemDisplay(uint itemId)
+    private void HandleItemDisplay(uint itemId, bool isHq)
     {
         var item = DataManager.GetExcelSheet<Item>().GetRow(itemId);
-        var quantity = this.inMemoryCounts.GetValueOrDefault(itemId);
+        var quantity = this.inMemoryCounts.GetValueOrDefault((itemId, isHq));
 
         if (quantity == 0)
         {
@@ -305,11 +305,12 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
             return;
         }
 
-        var quantityString = quantity is > 1 or 0 ? $"({quantity:N0})" : string.Empty;
+        var quantityString = quantity is > 1 or 0 ? $" ({quantity:N0})" : string.Empty;
+        var hqString = isHq ? " (HQ) " : string.Empty;
 
         PluginLog.Verbose($"Showing: {item.Name} with quantity {quantityString}");
         ToastGui.ShowQuest(
-            $"{item.Name} {quantityString}",
+            $"{item.Name}{hqString}{quantityString}",
             new QuestToastOptions
                 { IconId = item.Icon, PlaySound = false, Position = this.Configuration.ToastPosition });
     }
