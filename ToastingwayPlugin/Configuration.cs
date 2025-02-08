@@ -19,6 +19,6 @@ public class Configuration : IPluginConfiguration
 
     public void Save()
     {
-        ToastingwayPlugin.PluginInterface.SavePluginConfig(this);
+        Service.PluginInterface.SavePluginConfig(this);
     }
 }

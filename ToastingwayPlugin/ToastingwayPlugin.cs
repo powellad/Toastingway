@@ -23,27 +23,6 @@ namespace Toastingway;
 // ReSharper disable once ClassNeverInstantiated.Global
 public sealed class ToastingwayPlugin : IDalamudPlugin
 {
-    [PluginService]
-    internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
-
-    [PluginService]
-    internal static ICommandManager CommandManager { get; private set; } = null!;
-
-    [PluginService]
-    public static IToastGui ToastGui { get; private set; } = null!;
-
-    [PluginService]
-    internal static IGameInventory GameInventory { get; private set; } = null!;
-
-    [PluginService]
-    internal static IPluginLog PluginLog { get; private set; } = null!;
-
-    [PluginService]
-    internal static IDataManager DataManager { get; private set; } = null!;
-
-    [PluginService]
-    public static IClientState ClientState { get; private set; } = null!;
-
     private const string CommandName = "/tw";
 
     public Configuration Configuration { get; init; }
@@ -66,32 +45,33 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
         GameInventoryType.Inventory2, GameInventoryType.Inventory3, GameInventoryType.Inventory4
     ];
 
-    public ToastingwayPlugin()
+    public ToastingwayPlugin(IDalamudPluginInterface pluginInterface)
     {
-        this.Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+        pluginInterface.Create<Service>();
+        this.Configuration = Service.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
         this.ConfigWindow = new ConfigWindow(this);
 
         this.WindowSystem.AddWindow(this.ConfigWindow);
 
-        CommandManager.AddHandler(
+        Service.CommandManager.AddHandler(
             CommandName,
             new CommandInfo(this.OnCommand)
             {
                 HelpMessage = "Open configuration"
             });
 
-        PluginInterface.UiBuilder.Draw += this.DrawUi;
+        Service.PluginInterface.UiBuilder.Draw += this.DrawUi;
 
-        PluginInterface.UiBuilder.OpenConfigUi += this.ToggleConfigUi;
-        PluginInterface.UiBuilder.OpenMainUi += this.ToggleConfigUi;
+        Service.PluginInterface.UiBuilder.OpenConfigUi += this.ToggleConfigUi;
+        Service.PluginInterface.UiBuilder.OpenMainUi += this.ToggleConfigUi;
 
-        GameInventory.InventoryChanged += this.OnItemChanged;
-        GameInventory.ItemAddedExplicit += this.OnItemAdded;
-        GameInventory.ItemMovedExplicit += this.OnItemMoved;
-        GameInventory.ItemRemovedExplicit += this.OnItemRemoved;
+        Service.GameInventory.InventoryChanged += this.OnItemChanged;
+        Service.GameInventory.ItemAddedExplicit += this.OnItemAdded;
+        Service.GameInventory.ItemMovedExplicit += this.OnItemMoved;
+        Service.GameInventory.ItemRemovedExplicit += this.OnItemRemoved;
 
-        ClientState.Login += this.OnLogin;
+        Service.ClientState.Login += this.OnLogin;
     }
 
     public void Dispose()
@@ -100,19 +80,23 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 
         this.ConfigWindow.Dispose();
 
-        CommandManager.RemoveHandler(CommandName);
+        Service.CommandManager.RemoveHandler(CommandName);
 
-        PluginInterface.UiBuilder.Draw -= this.DrawUi;
+        Service.PluginInterface.UiBuilder.Draw -= this.DrawUi;
 
-        PluginInterface.UiBuilder.OpenConfigUi -= this.ToggleConfigUi;
-        PluginInterface.UiBuilder.OpenMainUi -= this.ToggleConfigUi;
+        Service.PluginInterface.UiBuilder.OpenConfigUi -= this.ToggleConfigUi;
+        Service.PluginInterface.UiBuilder.OpenMainUi -= this.ToggleConfigUi;
 
-        GameInventory.ItemAddedExplicit -= this.OnItemAdded;
-        GameInventory.ItemChangedExplicit -= this.OnItemChanged;
-        GameInventory.ItemMovedExplicit -= this.OnItemMoved;
-        GameInventory.ItemRemovedExplicit -= this.OnItemRemoved;
+        Service.GameInventory.ItemAddedExplicit -= this.OnItemAdded;
+        Service.GameInventory.ItemChangedExplicit -= this.OnItemChanged;
+        Service.GameInventory.ItemMovedExplicit -= this.OnItemMoved;
+        Service.GameInventory.ItemRemovedExplicit -= this.OnItemRemoved;
+        
+        if (Service.ClientState.IsLoggedIn) {
+            Service.Framework.RunOnFrameworkThread(OnLogin);
+        }
 
-        ClientState.Login -= this.OnLogin;
+        Service.ClientState.Login -= this.OnLogin;
     }
 
     private void OnLogin()
@@ -137,14 +121,14 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 
     private unsafe void SetBagInventory(InventoryContainer* bag)
     {
-        PluginLog.Debug($"Processing bag {bag->Type}.");
+        Service.PluginLog.Debug($"Processing bag {bag->Type}.");
         for (var index = 0; index < bag->Size; index++)
         {
             var item = bag->Items[index];
 
             if (item.ItemId > 0)
             {
-                PluginLog.Verbose($"Adding item: Item {item.ItemId}, Quantity: {item.Quantity}");
+                Service.PluginLog.Verbose($"Adding item:Item {item.ItemId}, HQ: {item.IsHighQuality()}, Quantity: {item.Quantity}");
                 this.UpdateCount(item.ItemId, (uint)item.Quantity, false, item.IsHighQuality());
             }
         }
@@ -214,8 +198,8 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
         }
 
         // Race condition here when discarding.
-        PluginLog.Verbose(
-            $"OnItemRemoved: Item {item.ItemId}, Quantity: {item.Quantity} into bag {item.ContainerType}: removed from {data.Inventory}");
+        Service.PluginLog.Verbose(
+            $"OnItemRemoved: Item {item.ItemId}, HQ: {item.IsHq}, Quantity: {item.Quantity} into bag {item.ContainerType}: removed from {data.Inventory}");
         this.inMemoryCounts[(item.ItemId, item.IsHq)] = 0;
     }
 
@@ -229,16 +213,16 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
             return;
         }
 
-        PluginLog.Verbose(
-            $"OnItemMoved: Item {item.ItemId}, Quantity: {item.Quantity}: moved from {data.SourceInventory} to {data.TargetInventory}");
+        Service.PluginLog.Verbose(
+            $"OnItemMoved: Item {item.ItemId}, HQ: {item.IsHq}, Quantity: {item.Quantity}: moved from {data.SourceInventory} to {data.TargetInventory}");
         if (this.IsPlayerInventory(data.SourceInventory))
         {
-            PluginLog.Verbose($"OnItemMoved: Removed count for Item {item.ItemId}.");
+            Service.PluginLog.Verbose($"OnItemMoved: Removed count for Item {item.ItemId}.");
             this.inMemoryCounts[(item.ItemId, item.IsHq)] = 0;
         }
         else if (this.IsPlayerInventory(data.TargetInventory))
         {
-            PluginLog.Verbose($"OnItemMoved: Update count for Item {item.ItemId} ({item.Quantity}).");
+            Service.PluginLog.Verbose($"OnItemMoved: Update count for Item {item.ItemId} ({item.Quantity}).");
             this.inMemoryCounts[(item.ItemId, item.IsHq)] = (uint)item.Quantity;
         }
     }
@@ -252,8 +236,8 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 
         if (this.ShouldShow(args.Inventory))
         {
-            PluginLog.Verbose(
-                $"OnItemAdded: Item {args.Item.ItemId}, Quantity: {args.Item.Quantity} into bag {args.Item.ContainerType}");
+            Service.PluginLog.Verbose(
+                $"OnItemAdded: Item {args.Item.ItemId}, HQ: {args.Item.IsHq}, Quantity: {args.Item.Quantity} into bag {args.Item.ContainerType}");
 
             this.UpdateCount(args.Item.ItemId, (uint)args.Item.Quantity);
 
@@ -278,15 +262,15 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 
         if (this.ShouldShow(args.Item.ContainerType) && args.Type == GameInventoryEvent.Changed)
         {
-            PluginLog.Verbose(
-                $"OnItemChanged: Item {args.Item.ItemId} changed by {args.Item.Quantity} into bag {args.Item.ContainerType}");
+            Service.PluginLog.Verbose(
+                $"OnItemChanged: Item {args.Item.ItemId}, HQ: {args.Item.IsHq}, changed by {args.Item.Quantity} into bag {args.Item.ContainerType}");
 
             var currentCount = this.inMemoryCounts.GetValueOrDefault((args.Item.ItemId, args.Item.IsHq));
             this.UpdateCount(args.Item.ItemId, (uint)args.Item.Quantity);
 
             var difference = args.Item.Quantity - (int)currentCount;
 
-            PluginLog.Verbose($"Quantity change: Current: {currentCount}, New: {args.Item.Quantity}");
+            Service.PluginLog.Verbose($"Quantity change: Current: {currentCount}, HQ: {args.Item.IsHq}, New: {args.Item.Quantity}");
             if (difference > 0) // Means something has been gained, so show the toast.
             {
                 this.HandleItemDisplay(args.Item.ItemId, args.Item.IsHq);
@@ -296,20 +280,20 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 
     private void HandleItemDisplay(uint itemId, bool isHq)
     {
-        var item = DataManager.GetExcelSheet<Item>().GetRow(itemId);
+        var item = Service.DataManager.GetExcelSheet<Item>().GetRow(itemId);
         var quantity = this.inMemoryCounts.GetValueOrDefault((itemId, isHq));
 
         if (quantity == 0)
         {
-            PluginLog.Debug($"Skipping toast. Couldn't find item: {itemId}.");
+            Service.PluginLog.Debug($"Skipping toast. Couldn't find item: {itemId}.");
             return;
         }
 
         var quantityString = quantity is > 1 or 0 ? $" ({quantity:N0})" : string.Empty;
-        var hqString = isHq ? " (HQ) " : string.Empty;
+        var hqString = isHq ? " (HQ)" : string.Empty;
 
-        PluginLog.Verbose($"Showing: {item.Name} with quantity {quantityString}");
-        ToastGui.ShowQuest(
+        Service.PluginLog.Verbose($"Showing: {item.Name}, HQ: {isHq}, with quantity {quantityString}");
+        Service.ToastGui.ShowQuest(
             $"{item.Name}{hqString}{quantityString}",
             new QuestToastOptions
                 { IconId = item.Icon, PlaySound = false, Position = this.Configuration.ToastPosition });
