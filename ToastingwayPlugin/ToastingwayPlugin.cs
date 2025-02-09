@@ -1,13 +1,11 @@
 using Dalamud.Game.Command;
-using Dalamud.IoC;
+
 using Dalamud.Plugin;
 using Dalamud.Interface.Windowing;
-using Dalamud.Plugin.Services;
 
 using Toastingway.Windows;
 
 using Dalamud.Game.Inventory.InventoryEventArgTypes;
-using Dalamud.Game.Gui.Toast;
 using Dalamud.Game.Inventory;
 
 using System.Collections.Generic;
@@ -15,8 +13,6 @@ using System.Collections.Generic;
 using FFXIVClientStructs.FFXIV.Client.Game;
 
 using System.Linq;
-
-using Lumina.Excel.Sheets;
 
 namespace Toastingway;
 
@@ -30,6 +26,8 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
     public readonly WindowSystem WindowSystem = new("Toastingway");
 
     private ConfigWindow ConfigWindow { get; init; }
+    
+    private InGameToastNotifier Notifier { get; init; }
 
     private readonly Dictionary<(uint, bool), uint> inMemoryCounts = new();
 
@@ -49,6 +47,7 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
     {
         pluginInterface.Create<Service>();
         this.Configuration = Service.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+        this.Notifier = new InGameToastNotifier(this.Configuration);
 
         this.ConfigWindow = new ConfigWindow(this);
 
@@ -142,10 +141,12 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
             {
                 if (!replace)
                 {
+                    Service.PluginLog.Verbose($"Update count: Adding. Item {itemId}, HQ: {hq}, Quantity: {quantity}");
                     this.inMemoryCounts[(itemId, hq)] += quantity;
                 }
                 else
                 {
+                    Service.PluginLog.Verbose($"Update count: Replacing. Item {itemId}, HQ: {hq}, Quantity: {quantity}");
                     this.inMemoryCounts[(itemId, hq)] = quantity;
                 }
             }
@@ -280,22 +281,7 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 
     private void HandleItemDisplay(uint itemId, bool isHq)
     {
-        var item = Service.DataManager.GetExcelSheet<Item>().GetRow(itemId);
         var quantity = this.inMemoryCounts.GetValueOrDefault((itemId, isHq));
-
-        if (quantity == 0)
-        {
-            Service.PluginLog.Debug($"Skipping toast. Couldn't find item: {itemId}.");
-            return;
-        }
-
-        var quantityString = quantity is > 1 or 0 ? $" ({quantity:N0})" : string.Empty;
-        var hqString = isHq ? " (HQ)" : string.Empty;
-
-        Service.PluginLog.Verbose($"Showing: {item.Name}, HQ: {isHq}, with quantity {quantityString}");
-        Service.ToastGui.ShowQuest(
-            $"{item.Name}{hqString}{quantityString}",
-            new QuestToastOptions
-                { IconId = item.Icon, PlaySound = false, Position = this.Configuration.ToastPosition });
+        this.Notifier.ShowItem(itemId, quantity, isHq);
     }
 }

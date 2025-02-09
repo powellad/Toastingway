@@ -2,5 +2,5 @@ namespace Toastingway;
 
 public interface INotifier
 {
-    void ShowItem(uint itemId, bool isHq);
+    void ShowItem(uint itemId, uint quantity, bool isHq);
 }
