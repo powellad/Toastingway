@@ -240,7 +240,7 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
             Service.PluginLog.Verbose(
                 $"OnItemAdded: Item {args.Item.ItemId}, HQ: {args.Item.IsHq}, Quantity: {args.Item.Quantity} into bag {args.Item.ContainerType}");
 
-            this.UpdateCount(args.Item.ItemId, (uint)args.Item.Quantity);
+            this.UpdateCount(args.Item.ItemId, (uint)args.Item.Quantity, hq: args.Item.IsHq);
 
             this.HandleItemDisplay(args.Item.ItemId, args.Item.IsHq);
         }
@@ -267,7 +267,7 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
                 $"OnItemChanged: Item {args.Item.ItemId}, HQ: {args.Item.IsHq}, changed by {args.Item.Quantity} into bag {args.Item.ContainerType}");
 
             var currentCount = this.inMemoryCounts.GetValueOrDefault((args.Item.ItemId, args.Item.IsHq));
-            this.UpdateCount(args.Item.ItemId, (uint)args.Item.Quantity);
+            this.UpdateCount(args.Item.ItemId, (uint)args.Item.Quantity, hq: args.Item.IsHq);
 
             var difference = args.Item.Quantity - (int)currentCount;
 
