@@ -20,7 +20,7 @@ A simple plugin to show some native toasts for items, crystals, or gil.
 
 1. Beast tribe reputation and currency (not in Dalamud API yet)
 2. Commendations (not in Dalamud API yet)
-3. HQ/NQ distinction
+3. ~~HQ/NQ distinction~~ (Fixed with 1.2)
 
 ## Known issues
 
