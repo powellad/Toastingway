@@ -13,12 +13,17 @@ public class InGameToastNotifier(Configuration configuration) : INotifier
         Service.PluginLog.Verbose($"Wanting to show item ID: {itemId}, quantity: {quantity}, HQ: {isHq}.");
         
         var item = Service.DataManager.GetExcelSheet<Item>().GetRow(itemId);
-        var asdf = Service.DataManager.GetExcelSheet<Item>();
-        Service.PluginLog.Verbose($"Looked for item. Found: Name: {item.Name} Icon: {item.Icon}");
+        Service.PluginLog.Verbose($"Searched for item. Found: Name: {item.Name} Icon: {item.Icon}");
 
         if (itemId == 0)
         {
             Service.PluginLog.Debug($"Skipping toast. Couldn't find item: {itemId}.");
+            return;
+        }
+        
+        if (item.Icon == 0)
+        {
+            Service.PluginLog.Debug($"Couldn't find icon for item: {itemId}.");
             return;
         }
 
