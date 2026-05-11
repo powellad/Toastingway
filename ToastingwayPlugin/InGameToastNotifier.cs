@@ -1,3 +1,5 @@
+using System;
+
 using Dalamud.Game.Gui.Toast;
 
 using Lumina.Excel.Sheets;
@@ -12,28 +14,43 @@ public class InGameToastNotifier(Configuration configuration) : INotifier
     {
         Service.PluginLog.Verbose($"Wanting to show item ID: {itemId}, quantity: {quantity}, HQ: {isHq}.");
         
-        var item = Service.DataManager.GetExcelSheet<Item>().GetRow(itemId);
-        Service.PluginLog.Verbose($"Searched for item. Found: Name: {item.Name} Icon: {item.Icon}");
-
         if (itemId == 0)
         {
-            Service.PluginLog.Debug($"Skipping toast. Couldn't find item: {itemId}.");
+            Service.PluginLog.Debug($"Skipping toast. Item ID of zero given: {itemId}.");
             return;
         }
         
-        if (item.Icon == 0)
+        try
         {
-            Service.PluginLog.Debug($"Couldn't find icon for item: {itemId}.");
-            return;
+            var isFound = Service.DataManager.GetExcelSheet<Item>().TryGetRow(itemId, out var item);
+            
+            if (!isFound)
+            {
+                Service.PluginLog.Debug($"Couldn't find item: {itemId}.");
+                return;
+            }
+            
+            Service.PluginLog.Verbose($"Searched for item. Found: Name: {item.Name} Icon: {item.Icon}");
+        
+            if (item.Icon == 0)
+            {
+                Service.PluginLog.Debug($"Couldn't find icon for item: {itemId}. Using gil icon instead.");
+            }
+            
+            var quantityString = quantity > 1 ? $" ({quantity:N0})" : string.Empty;
+            var hqString = isHq ? " (HQ)" : string.Empty;
+            var icon = item.Icon == 0 ? (ushort)1 : item.Icon;
+
+            Service.PluginLog.Verbose($"Showing: {item.Name}, HQ: {isHq}{quantityString}");
+            Service.ToastGui.ShowQuest(
+                $"{item.Name}{hqString}{quantityString}",
+                new QuestToastOptions
+                    { IconId = icon, PlaySound = false, Position = this.Configuration.ToastPosition });
         }
-
-        var quantityString = quantity is > 1 ? $" ({quantity:N0})" : string.Empty;
-        var hqString = isHq ? " (HQ)" : string.Empty;
-
-        Service.PluginLog.Verbose($"Showing: {item.Name}, HQ: {isHq}, with quantity {quantityString}");
-        Service.ToastGui.ShowQuest(
-            $"{item.Name}{hqString}{quantityString}",
-            new QuestToastOptions
-                { IconId = item.Icon, PlaySound = false, Position = this.Configuration.ToastPosition });
+        catch (Exception e)
+        {
+            Service.PluginLog.Verbose($"Error looking up: {itemId}.");
+            Service.PluginLog.Verbose($"Exception: {e}.");
+        }
     } 
 }

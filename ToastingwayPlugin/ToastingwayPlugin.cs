@@ -127,7 +127,7 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 
             if (item.ItemId > 0)
             {
-                Service.PluginLog.Verbose($"Adding item:Item {item.ItemId}, HQ: {item.IsHighQuality()}, Quantity: {item.Quantity}");
+                Service.PluginLog.Debug($"Adding item:Item {item.ItemId}, HQ: {item.IsHighQuality()}, Quantity: {item.Quantity}");
                 this.UpdateCount(item.ItemId, (uint)item.Quantity, false, item.IsHighQuality());
             }
         }
@@ -141,14 +141,18 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
             {
                 if (!replace)
                 {
-                    Service.PluginLog.Verbose($"Update count: Adding. Item {itemId}, HQ: {hq}, Quantity: {quantity}");
+                    Service.PluginLog.Debug($"Update count: Adding. Item {itemId}, HQ: {hq}, Quantity: {quantity}");
                     this.inMemoryCounts[(itemId, hq)] += quantity;
                 }
                 else
                 {
-                    Service.PluginLog.Verbose($"Update count: Replacing. Item {itemId}, HQ: {hq}, Quantity: {quantity}");
+                    Service.PluginLog.Debug($"Update count: Replacing. Item {itemId}, HQ: {hq}, Quantity: {quantity}");
                     this.inMemoryCounts[(itemId, hq)] = quantity;
                 }
+            }
+            else
+            {
+                Service.PluginLog.Verbose($"Failed adding: item {itemId}, HQ: {hq}, Quantity: {quantity}");
             }
         }
     }
@@ -200,31 +204,31 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 
         // Race condition here when discarding.
         Service.PluginLog.Verbose(
-            $"OnItemRemoved: Item {item.ItemId}, HQ: {item.IsHq}, Quantity: {item.Quantity} into bag {item.ContainerType}: removed from {data.Inventory}");
-        this.inMemoryCounts[(item.ItemId, item.IsHq)] = 0;
+            $"OnItemRemoved: Item {item.BaseItemId}, HQ: {item.IsHq}, Quantity: {item.Quantity} into bag {item.ContainerType}: removed from {data.Inventory}");
+        this.inMemoryCounts[(item.BaseItemId, item.IsHq)] = 0;
     }
 
     private void OnItemMoved(InventoryItemMovedArgs data)
     {
         var item = data.Item;
 
-        if ((data.TargetInventory == data.SourceInventory) ||
-            (this.IsPlayerInventory(data.TargetInventory) && (this.IsPlayerInventory(data.SourceInventory))))
+        if (data.TargetInventory == data.SourceInventory ||
+            (this.IsPlayerInventory(data.TargetInventory) && this.IsPlayerInventory(data.SourceInventory)))
         {
             return;
         }
 
         Service.PluginLog.Verbose(
-            $"OnItemMoved: Item {item.ItemId}, HQ: {item.IsHq}, Quantity: {item.Quantity}: moved from {data.SourceInventory} to {data.TargetInventory}");
+            $"OnItemMoved: Item {item.BaseItemId}, HQ: {item.IsHq}, Quantity: {item.Quantity}: moved from {data.SourceInventory} to {data.TargetInventory}");
         if (this.IsPlayerInventory(data.SourceInventory))
         {
-            Service.PluginLog.Verbose($"OnItemMoved: Removed count for Item {item.ItemId}.");
-            this.inMemoryCounts[(item.ItemId, item.IsHq)] = 0;
+            Service.PluginLog.Verbose($"OnItemMoved: Removed count for Item {item.BaseItemId}.");
+            this.inMemoryCounts[(item.BaseItemId, item.IsHq)] = 0;
         }
         else if (this.IsPlayerInventory(data.TargetInventory))
         {
-            Service.PluginLog.Verbose($"OnItemMoved: Update count for Item {item.ItemId} ({item.Quantity}).");
-            this.inMemoryCounts[(item.ItemId, item.IsHq)] = (uint)item.Quantity;
+            Service.PluginLog.Verbose($"OnItemMoved: Update count for Item {item.BaseItemId} ({item.Quantity}).");
+            this.inMemoryCounts[(item.BaseItemId, item.IsHq)] = (uint)item.Quantity;
         }
     }
 
@@ -238,11 +242,11 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
         if (this.ShouldShow(args.Inventory))
         {
             Service.PluginLog.Verbose(
-                $"OnItemAdded: Item {args.Item.ItemId}, HQ: {args.Item.IsHq}, Quantity: {args.Item.Quantity} into bag {args.Item.ContainerType}");
+                $"OnItemAdded: Item {args.Item.BaseItemId}, HQ: {args.Item.IsHq}, Quantity: {args.Item.Quantity} into bag {args.Item.ContainerType}");
 
-            this.UpdateCount(args.Item.ItemId, (uint)args.Item.Quantity, true, args.Item.IsHq);
+            this.UpdateCount(args.Item.BaseItemId, (uint)args.Item.Quantity, true, args.Item.IsHq);
 
-            this.HandleItemDisplay(args.Item.ItemId, args.Item.IsHq);
+            this.HandleItemDisplay(args.Item.BaseItemId, args.Item.IsHq);
         }
     }
 
@@ -264,17 +268,17 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
         if (this.ShouldShow(args.Item.ContainerType) && args.Type == GameInventoryEvent.Changed)
         {
             Service.PluginLog.Verbose(
-                $"OnItemChanged: Item {args.Item.ItemId}, HQ: {args.Item.IsHq}, changed by {args.Item.Quantity} into bag {args.Item.ContainerType}");
+                $"OnItemChanged: Item {args.Item.BaseItemId}, HQ: {args.Item.IsHq}, changed by {args.Item.Quantity} into bag {args.Item.ContainerType}");
 
-            var currentCount = this.inMemoryCounts.GetValueOrDefault((args.Item.ItemId, args.Item.IsHq));
-            this.UpdateCount(args.Item.ItemId, (uint)args.Item.Quantity, true, args.Item.IsHq);
+            var currentCount = this.inMemoryCounts.GetValueOrDefault((args.Item.BaseItemId, args.Item.IsHq));
+            this.UpdateCount(args.Item.BaseItemId, (uint)args.Item.Quantity, true, args.Item.IsHq);
 
             var difference = args.Item.Quantity - (int)currentCount;
 
             Service.PluginLog.Verbose($"Quantity change: Current: {currentCount}, HQ: {args.Item.IsHq}, New: {args.Item.Quantity}");
             if (difference > 0) // Means something has been gained, so show the toast.
             {
-                this.HandleItemDisplay(args.Item.ItemId, args.Item.IsHq);
+                this.HandleItemDisplay(args.Item.BaseItemId, args.Item.IsHq);
             }
         }
     }
