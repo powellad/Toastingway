@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+
 using Dalamud.Game.Gui.Toast;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
@@ -13,7 +14,7 @@ public class ConfigWindow : Window, IDisposable
     public ConfigWindow(ToastingwayPlugin plugin) : base("Toastingway Config")
     {
         this.Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
-                ImGuiWindowFlags.NoScrollWithMouse;
+                     ImGuiWindowFlags.NoScrollWithMouse;
 
         this.Size = new Vector2(330, 155);
         this.SizeCondition = ImGuiCond.Always;
@@ -54,11 +55,11 @@ public class ConfigWindow : Window, IDisposable
         }
 
         var selectedPosition = (int)this.configuration.ToastPosition;
-        var positionNames = Enum.GetNames<QuestToastPosition>();        
+        var positionNames = Enum.GetNames<QuestToastPosition>();
         if (ImGui.Combo("Toast position", ref selectedPosition, positionNames, positionNames.Length))
         {
             this.configuration.ToastPosition = (QuestToastPosition)selectedPosition;
             this.configuration.Save();
-        }        
+        }
     }
 }

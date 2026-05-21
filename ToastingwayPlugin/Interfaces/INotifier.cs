@@ -1,6 +1,8 @@
+using Dalamud.Game.Inventory;
+
 namespace Toastingway;
 
 public interface INotifier
 {
-    void ShowItem(uint itemId, uint quantity, bool isHq);
+    void ShowItem(GameInventoryItem item, uint quantity);
 }
