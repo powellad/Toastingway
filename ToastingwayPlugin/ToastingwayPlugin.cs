@@ -1,16 +1,8 @@
 using Dalamud.Game.Command;
-
 using Dalamud.Plugin;
 using Dalamud.Interface.Windowing;
 
 using Toastingway.Windows;
-
-using Dalamud.Game.Inventory.InventoryEventArgTypes;
-using Dalamud.Game.Inventory;
-
-using System.Collections.Generic;
-
-using FFXIVClientStructs.FFXIV.Client.Game;
 
 namespace Toastingway;
 
@@ -20,13 +12,13 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
     private const string CommandName = "/tw";
 
     public Configuration Configuration { get; init; }
-    
+
     public ItemManager ItemManager { get; init; }
 
     public readonly WindowSystem WindowSystem = new("Toastingway");
 
     private ConfigWindow ConfigWindow { get; init; }
-    
+
     private InGameToastNotifier Notifier { get; init; }
 
     public ToastingwayPlugin(IDalamudPluginInterface pluginInterface)
@@ -77,8 +69,9 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
         Service.GameInventory.ItemChangedExplicit -= this.ItemManager.OnItemChanged;
         Service.GameInventory.ItemMovedExplicit -= this.ItemManager.OnItemMoved;
         Service.GameInventory.ItemRemovedExplicit -= this.ItemManager.OnItemRemoved;
-        
-        if (Service.ClientState.IsLoggedIn) {
+
+        if (Service.ClientState.IsLoggedIn)
+        {
             Service.Framework.RunOnFrameworkThread(OnLogin);
         }
 
@@ -98,5 +91,4 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
     private void DrawUi() => this.WindowSystem.Draw();
 
     public void ToggleConfigUi() => this.ConfigWindow.Toggle();
-
 }

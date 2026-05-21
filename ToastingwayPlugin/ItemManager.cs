@@ -4,8 +4,6 @@ using System.Linq;
 using Dalamud.Game.Inventory;
 using Dalamud.Game.Inventory.InventoryEventArgTypes;
 
-using FFXIVClientStructs.FFXIV.Client.Game;
-
 namespace Toastingway;
 
 public class ItemManager(INotifier notifier, Configuration configuration)
@@ -14,7 +12,9 @@ public class ItemManager(INotifier notifier, Configuration configuration)
 
     private Configuration Configuration { get; init; } = configuration;
 
-    private readonly Dictionary<(uint, bool), uint> inMemoryCounts = new();
+    private static readonly SimpleGameInventoryItemComparer Comparer = new();
+
+    private readonly Dictionary<GameInventoryItem, uint> inMemoryCounts = new(comparer: Comparer);
 
     private readonly IReadOnlyList<GameInventoryType> bagInventoryTypes =
     [
@@ -33,52 +33,55 @@ public class ItemManager(INotifier notifier, Configuration configuration)
         return this.bagInventoryTypes.Contains(type);
     }
 
-    private unsafe void SetInventoryCounts()
+    private void SetBagInventory(GameInventoryType bag)
     {
-        this.SetBagInventory(InventoryManager.Instance()->GetInventoryContainer(InventoryType.Inventory1));
-        this.SetBagInventory(InventoryManager.Instance()->GetInventoryContainer(InventoryType.Inventory2));
-        this.SetBagInventory(InventoryManager.Instance()->GetInventoryContainer(InventoryType.Inventory3));
-        this.SetBagInventory(InventoryManager.Instance()->GetInventoryContainer(InventoryType.Inventory4));
-        this.SetBagInventory(InventoryManager.Instance()->GetInventoryContainer(InventoryType.Crystals));
-        this.SetBagInventory(InventoryManager.Instance()->GetInventoryContainer(InventoryType.Currency));
-    }
+        var items = Service.GameInventory.GetInventoryItems(bag);
 
-    private unsafe void SetBagInventory(InventoryContainer* bag)
-    {
-        Service.PluginLog.Debug($"Processing bag {bag->Type}.");
-        for (var index = 0; index < bag->Size; index++)
+        Service.PluginLog.Debug($"SetBagInventory: Processing bag: {bag}.");
+        foreach (var item in items)
         {
-            var item = bag->Items[index];
-
-            if (item.ItemId > 0)
-            {
-                Service.PluginLog.Debug($"Adding item:Item {item.ItemId}, HQ: {item.IsHighQuality()}, Quantity: {item.Quantity}");
-                this.UpdateCount(item.ItemId, (uint)item.Quantity, false, item.IsHighQuality());
-            }
+            Service.PluginLog.Debug(
+                $"SetBagInventory: Adding item:Item {item.ItemId}, HQ: {item.IsHq}, Quantity: {item.Quantity}");
+            this.UpdateCount(item, false);
         }
     }
 
-    private void UpdateCount(uint itemId, uint quantity, bool replace, bool hq)
+    private void SetInventoryCounts()
     {
-        if (itemId > 0)
+        foreach (var type in this.allInventoryTypes)
         {
-            if (!this.inMemoryCounts.TryAdd((itemId, hq), quantity))
+            SetBagInventory(type);
+        }
+    }
+
+    private void UpdateCount(GameInventoryItem item, bool replace)
+    {
+        var quantity = (uint)item.Quantity;
+
+        Service.PluginLog.Verbose(
+            this.inMemoryCounts.ContainsKey(item)
+                ? $"UpdateCount: Dictionary contains Item: {item}"
+                : $"UpdateCount: Dictionary does NOT contain: {item}");
+
+        if (!this.inMemoryCounts.TryAdd(item, quantity))
+        {
+            if (!replace)
             {
-                if (!replace)
-                {
-                    Service.PluginLog.Debug($"Update count: Adding. Item {itemId}, HQ: {hq}, Quantity: {quantity}");
-                    this.inMemoryCounts[(itemId, hq)] += quantity;
-                }
-                else
-                {
-                    Service.PluginLog.Debug($"Update count: Replacing. Item {itemId}, HQ: {hq}, Quantity: {quantity}");
-                    this.inMemoryCounts[(itemId, hq)] = quantity;
-                }
+                Service.PluginLog.Debug(
+                    $"UpdateCount: Adding to existing item count. Item {item}");
+                this.inMemoryCounts[item] += quantity;
             }
             else
             {
-                Service.PluginLog.Verbose($"Failed adding: item {itemId}, HQ: {hq}, Quantity: {quantity}");
+                Service.PluginLog.Debug(
+                    $"UpdateCount: Replacing existing item count. Item {item}");
+                this.inMemoryCounts[item] = quantity;
             }
+        }
+        else
+        {
+            Service.PluginLog.Debug(
+                $"UpdateCount: Added new item: {item}");
         }
     }
 
@@ -121,7 +124,7 @@ public class ItemManager(INotifier notifier, Configuration configuration)
         // Race condition here when discarding.
         Service.PluginLog.Verbose(
             $"OnItemRemoved: Item {item.BaseItemId}, HQ: {item.IsHq}, Quantity: {item.Quantity} into bag {item.ContainerType}: removed from {data.Inventory}");
-        this.inMemoryCounts[(item.BaseItemId, item.IsHq)] = 0;
+        this.inMemoryCounts[item] = 0;
     }
 
     public void OnItemMoved(InventoryItemMovedArgs data)
@@ -139,12 +142,12 @@ public class ItemManager(INotifier notifier, Configuration configuration)
         if (this.IsPlayerInventory(data.SourceInventory))
         {
             Service.PluginLog.Verbose($"OnItemMoved: Removed count for Item {item.BaseItemId}.");
-            this.inMemoryCounts[(item.BaseItemId, item.IsHq)] = 0;
+            this.inMemoryCounts[item] = 0;
         }
         else if (this.IsPlayerInventory(data.TargetInventory))
         {
             Service.PluginLog.Verbose($"OnItemMoved: Update count for Item {item.BaseItemId} ({item.Quantity}).");
-            this.inMemoryCounts[(item.BaseItemId, item.IsHq)] = (uint)item.Quantity;
+            this.inMemoryCounts[item] = (uint)item.Quantity;
         }
     }
 
@@ -158,11 +161,11 @@ public class ItemManager(INotifier notifier, Configuration configuration)
         if (this.ShouldShow(args.Inventory))
         {
             Service.PluginLog.Verbose(
-                $"OnItemAdded: Item {args.Item.BaseItemId}, HQ: {args.Item.IsHq}, Quantity: {args.Item.Quantity} into bag {args.Item.ContainerType}");
+                $"OnItemAdded: Item {args.Item}");
 
-            this.UpdateCount(args.Item.BaseItemId, (uint)args.Item.Quantity, true, args.Item.IsHq);
+            this.UpdateCount(args.Item, true);
 
-            this.HandleItemDisplay(args.Item.BaseItemId, args.Item.IsHq);
+            this.HandleItemDisplay(args.Item);
         }
     }
 
@@ -186,23 +189,24 @@ public class ItemManager(INotifier notifier, Configuration configuration)
             Service.PluginLog.Verbose(
                 $"OnItemChanged: Item {args.Item.BaseItemId}, HQ: {args.Item.IsHq}, changed by {args.Item.Quantity} into bag {args.Item.ContainerType}");
 
-            var currentCount = this.inMemoryCounts.GetValueOrDefault((args.Item.BaseItemId, args.Item.IsHq));
-            this.UpdateCount(args.Item.BaseItemId, (uint)args.Item.Quantity, true, args.Item.IsHq);
+            var currentCount = this.inMemoryCounts.GetValueOrDefault(args.Item);
+            this.UpdateCount(args.Item, true);
 
             var difference = args.Item.Quantity - (int)currentCount;
 
-            Service.PluginLog.Verbose($"Quantity change: Current: {currentCount}, HQ: {args.Item.IsHq}, New: {args.Item.Quantity}");
+            Service.PluginLog.Verbose(
+                $"OnItemChanged: Quantity change: Current: {currentCount}, HQ: {args.Item.IsHq}, New: {args.Item.Quantity}");
             if (difference > 0) // Means something has been gained, so show the toast.
             {
-                this.HandleItemDisplay(args.Item.BaseItemId, args.Item.IsHq);
+                this.HandleItemDisplay(args.Item);
             }
         }
     }
 
-    private void HandleItemDisplay(uint itemId, bool isHq)
+    private void HandleItemDisplay(GameInventoryItem item)
     {
-        var quantity = this.inMemoryCounts.GetValueOrDefault((itemId, isHq));
-        this.Notifier.ShowItem(itemId, quantity, isHq);
+        var quantity = this.inMemoryCounts.GetValueOrDefault(item);
+        this.Notifier.ShowItem(item, quantity);
     }
 
     public void Init()
