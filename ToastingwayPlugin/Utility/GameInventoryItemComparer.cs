@@ -1,7 +1,3 @@
-using System.Collections.Generic;
-
-using Dalamud.Game.Inventory;
-
 namespace Toastingway;
 
 public class SimpleGameInventoryItemComparer : IEqualityComparer<GameInventoryItem>

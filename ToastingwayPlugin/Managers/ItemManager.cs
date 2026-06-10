@@ -1,20 +1,12 @@
-using System.Collections.Generic;
-using System.Linq;
-
-using Dalamud.Game.Inventory;
 using Dalamud.Game.Inventory.InventoryEventArgTypes;
+
+using Toastingway.Models;
 
 namespace Toastingway;
 
-public class ItemManager(INotifier notifier, Configuration configuration)
+public class ItemManager
 {
-    private INotifier Notifier { get; init; } = notifier;
-
-    private Configuration Configuration { get; init; } = configuration;
-
-    private static readonly SimpleGameInventoryItemComparer Comparer = new();
-
-    private readonly Dictionary<GameInventoryItem, uint> inMemoryCounts = new(comparer: Comparer);
+    private readonly Dictionary<GameInventoryItem, uint> inMemoryCounts = new(comparer: new SimpleGameInventoryItemComparer());
 
     private readonly IReadOnlyList<GameInventoryType> bagInventoryTypes =
     [
@@ -99,17 +91,17 @@ public class ItemManager(INotifier notifier, Configuration configuration)
 
     private bool ShouldShowInventory(GameInventoryType incomingType)
     {
-        return this.Configuration.ShowInventory && this.IsPlayerInventory(incomingType);
+        return Service.Configuration.ShowInventory && this.IsPlayerInventory(incomingType);
     }
 
     private bool ShouldShowCurrency(GameInventoryType incomingType)
     {
-        return this.Configuration.ShowCurrency && incomingType == GameInventoryType.Currency;
+        return Service.Configuration.ShowCurrency && incomingType == GameInventoryType.Currency;
     }
 
     private bool ShouldShowCrystals(GameInventoryType incomingType)
     {
-        return this.Configuration.ShowCrystals && incomingType == GameInventoryType.Crystals;
+        return Service.Configuration.ShowCrystals && incomingType == GameInventoryType.Crystals;
     }
 
     public void OnItemRemoved(InventoryItemRemovedArgs data)
@@ -206,7 +198,9 @@ public class ItemManager(INotifier notifier, Configuration configuration)
     private void HandleItemDisplay(GameInventoryItem item)
     {
         var quantity = this.inMemoryCounts.GetValueOrDefault(item);
-        this.Notifier.ShowItem(item, quantity);
+
+        var request = new ItemNotification(item, quantity);
+        Service.NotifierManager.RequestShowItem(request);
     }
 
     public void Init()
