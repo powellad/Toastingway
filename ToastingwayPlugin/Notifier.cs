@@ -4,6 +4,8 @@ using Dalamud.Game.Inventory;
 
 using Lumina.Excel.Sheets;
 
+using Toastingway.Models;
+
 namespace Toastingway;
 
 public abstract class Notifier(Configuration configuration)
@@ -12,19 +14,18 @@ public abstract class Notifier(Configuration configuration)
     
     protected Item LuminaItem { get; set; }
     
-    protected GameInventoryItem Item { get; set; }
-    
-    protected uint Quantity { get; set; }
+    protected ItemNotification? ItemNotification { get; set; }
 
-    protected string QuantityString => Quantity > 1 ? $" ({Quantity:N0})" : string.Empty;
+    // Won't be null if it hits this part.
+    protected string QuantityString => ItemNotification!.Quantity > 1 ? $" ({ItemNotification.Quantity:N0})" : string.Empty;
     
-    protected string HqString => Item.IsHq ? " (HQ)" : string.Empty;
+    protected string HqString => ItemNotification!.Item.IsHq ? " (HQ)" : string.Empty;
     
     protected string ToastMessage => $"{LuminaItem.Name}{HqString}{QuantityString}";
     
     protected ushort Icon => this.LuminaItem.Icon;
 
-    protected void SetLuminaItem(GameInventoryItem item)
+    private void SetLuminaItem(GameInventoryItem item)
     {
         // Check item ID. Generally will fail if item is HQ or collectible.
         var isFound = Service.DataManager.GetExcelSheet<Item>().TryGetRow(item.ItemId, out var excelItem);
@@ -52,19 +53,19 @@ public abstract class Notifier(Configuration configuration)
     
     protected abstract void ShowNotification();
 
-    public void ShowItem(GameInventoryItem item, uint quantity)
+    public void ShowItem(ItemNotification itemNotification)
     {
-        Service.PluginLog.Verbose($"Wanting to show item ID: {item}, quantity: {quantity}, HQ: {item.IsHq}.");
+        Service.PluginLog.Verbose(
+            $"Wanting to show item ID: {itemNotification.Item}, quantity: {itemNotification.Quantity}, HQ: {itemNotification.Item.IsHq}.");
 
-        if (item.ItemId == 0)
+        if (itemNotification.Item.ItemId == 0)
         {
-            Service.PluginLog.Information($"Skipping toast. Invalid item ID given: {item}.");
+            Service.PluginLog.Information($"Skipping toast. Invalid item ID given: {itemNotification.Item}.");
             return;
         }
 
-        SetLuminaItem(item);
-        this.Item = item;
-        this.Quantity = quantity;
+        SetLuminaItem(itemNotification.Item);
+        this.ItemNotification = itemNotification;
 
         Service.PluginLog.Verbose($"Showing: {this.ToastMessage}");
         

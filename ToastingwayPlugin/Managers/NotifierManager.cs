@@ -12,6 +12,6 @@ public class NotifierManager(Configuration configuration)
 
     public void RequestShowItem(ItemNotification itemNotification)
     {
-        this.InGameToastNotifier.ShowItem(itemNotification.Item, itemNotification.Quantity);
+        this.InGameToastNotifier.ShowItem(itemNotification);
     }
 }

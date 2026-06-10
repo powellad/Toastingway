@@ -4,7 +4,6 @@ namespace Toastingway;
 
 public sealed class InGameToastNotifier(Configuration configuration) : Notifier(configuration)
 {
-
     protected override void ShowNotification()
     {
         Service.ToastGui.ShowQuest(
