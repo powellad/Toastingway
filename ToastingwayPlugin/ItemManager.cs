@@ -6,9 +6,9 @@ using Dalamud.Game.Inventory.InventoryEventArgTypes;
 
 namespace Toastingway;
 
-public class ItemManager(INotifier notifier, Configuration configuration)
+public class ItemManager(Notifier notifier, Configuration configuration)
 {
-    private INotifier Notifier { get; init; } = notifier;
+    private Notifier Notifier { get; init; } = notifier;
 
     private Configuration Configuration { get; init; } = configuration;
 
