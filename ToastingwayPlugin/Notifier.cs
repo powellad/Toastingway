@@ -6,8 +6,10 @@ using Lumina.Excel.Sheets;
 
 namespace Toastingway;
 
-public abstract class Notifier
+public abstract class Notifier(Configuration configuration)
 {
+    protected Configuration Configuration { get; init; } = configuration;
+    
     protected Item LuminaItem { get; set; }
     
     protected GameInventoryItem Item { get; set; }
@@ -62,6 +64,7 @@ public abstract class Notifier
 
         SetLuminaItem(item);
         this.Item = item;
+        this.Quantity = quantity;
 
         Service.PluginLog.Verbose($"Showing: {this.ToastMessage}");
         

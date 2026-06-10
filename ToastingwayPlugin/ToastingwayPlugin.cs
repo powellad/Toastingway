@@ -19,14 +19,14 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 
     private ConfigWindow ConfigWindow { get; init; }
 
-    private InGameToastNotifier Notifier { get; init; }
+    private NotifierManager NotifierManager { get; init; }
 
     public ToastingwayPlugin(IDalamudPluginInterface pluginInterface)
     {
         pluginInterface.Create<Service>();
         this.Configuration = Service.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-        this.Notifier = new InGameToastNotifier(this.Configuration);
-        this.ItemManager = new ItemManager(this.Notifier, this.Configuration);
+        this.NotifierManager = new NotifierManager(this.Configuration);
+        this.ItemManager = new ItemManager(this.NotifierManager, this.Configuration);
 
         this.ConfigWindow = new ConfigWindow(this);
 

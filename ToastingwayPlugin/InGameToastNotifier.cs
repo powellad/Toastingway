@@ -2,9 +2,8 @@ using Dalamud.Game.Gui.Toast;
 
 namespace Toastingway;
 
-public sealed class InGameToastNotifier(Configuration configuration) : Notifier
+public sealed class InGameToastNotifier(Configuration configuration) : Notifier(configuration)
 {
-    private Configuration Configuration { get; init; } = configuration;
 
     protected override void ShowNotification()
     {

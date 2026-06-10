@@ -4,11 +4,13 @@ using System.Linq;
 using Dalamud.Game.Inventory;
 using Dalamud.Game.Inventory.InventoryEventArgTypes;
 
+using Toastingway.Models;
+
 namespace Toastingway;
 
-public class ItemManager(Notifier notifier, Configuration configuration)
+public class ItemManager(NotifierManager notifierManager, Configuration configuration)
 {
-    private Notifier Notifier { get; init; } = notifier;
+    private NotifierManager NotifierManager { get; init; } = notifierManager;
 
     private Configuration Configuration { get; init; } = configuration;
 
@@ -206,7 +208,9 @@ public class ItemManager(Notifier notifier, Configuration configuration)
     private void HandleItemDisplay(GameInventoryItem item)
     {
         var quantity = this.inMemoryCounts.GetValueOrDefault(item);
-        this.Notifier.ShowItem(item, quantity);
+
+        var request = new ItemNotification(item, quantity);
+        this.NotifierManager.RequestShowItem(request);
     }
 
     public void Init()
