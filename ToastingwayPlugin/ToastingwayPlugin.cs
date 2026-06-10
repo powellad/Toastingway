@@ -23,7 +23,7 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
         Service.ItemManager = new ItemManager();
         Service.NotifierManager = new NotifierManager();
         
-        this.ConfigWindow = new ConfigWindow(this);
+        this.ConfigWindow = new ConfigWindow();
 
         this.WindowSystem.AddWindow(this.ConfigWindow);
 
@@ -44,7 +44,7 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
         Service.GameInventory.ItemMovedExplicit += Service.ItemManager.OnItemMoved;
         Service.GameInventory.ItemRemovedExplicit += Service.ItemManager.OnItemRemoved;
 
-        Service.ClientState.Login += this.OnLogin;
+        Service.ClientState.Login += OnLogin;
     }
 
     public void Dispose()
@@ -70,10 +70,10 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
             Service.Framework.RunOnFrameworkThread(OnLogin);
         }
 
-        Service.ClientState.Login -= this.OnLogin;
+        Service.ClientState.Login -= OnLogin;
     }
 
-    private void OnLogin()
+    private static void OnLogin()
     {
         Service.ItemManager.Init();
     }

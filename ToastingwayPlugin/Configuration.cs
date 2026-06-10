@@ -1,6 +1,5 @@
 using Dalamud.Configuration;
 using Dalamud.Game.Gui.Toast;
-using System;
 
 using Toastingway.Enums;
 
@@ -17,7 +16,7 @@ public class Configuration : IPluginConfiguration
 
     public bool ShowCrystals { get; set; } = true;
 
-    public QuestToastPosition ToastPosition { get; set; } = QuestToastPosition.Left;
+    public QuestToastPosition ToastPosition { get; set; } = QuestToastPosition.Centre;
 
     public NotifierProvider NotifierProvider { get; set; } = NotifierProvider.InGame;
 

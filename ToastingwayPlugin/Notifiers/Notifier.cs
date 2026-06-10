@@ -1,7 +1,5 @@
 using System.IO;
 
-using Dalamud.Game.Inventory;
-
 using Lumina.Excel.Sheets;
 
 using Toastingway.Models;

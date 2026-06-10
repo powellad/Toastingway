@@ -1,7 +1,3 @@
-using System.Collections.Generic;
-using System.Linq;
-
-using Dalamud.Game.Inventory;
 using Dalamud.Game.Inventory.InventoryEventArgTypes;
 
 using Toastingway.Models;
@@ -10,9 +6,7 @@ namespace Toastingway;
 
 public class ItemManager
 {
-    private static readonly SimpleGameInventoryItemComparer Comparer = new();
-
-    private readonly Dictionary<GameInventoryItem, uint> inMemoryCounts = new(comparer: Comparer);
+    private readonly Dictionary<GameInventoryItem, uint> inMemoryCounts = new(comparer: new SimpleGameInventoryItemComparer());
 
     private readonly IReadOnlyList<GameInventoryType> bagInventoryTypes =
     [

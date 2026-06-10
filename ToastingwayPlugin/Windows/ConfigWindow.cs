@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
 
 using Dalamud.Game.Gui.Toast;
@@ -19,7 +16,7 @@ public class ConfigWindow : Window, IDisposable
         { NotifierProvider.DalamudDefault, "Dalamud" }
     };
 
-    public ConfigWindow(ToastingwayPlugin plugin) : base("Toastingway Config")
+    public ConfigWindow() : base("Toastingway Config")
     {
         this.Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
                      ImGuiWindowFlags.NoScrollWithMouse;
