@@ -2,13 +2,13 @@ using Dalamud.Game.Gui.Toast;
 
 namespace Toastingway;
 
-public sealed class InGameToastNotifier(Configuration configuration) : Notifier(configuration)
+public sealed class InGameToastNotifier : Notifier
 {
     protected override void ShowNotification()
     {
         Service.ToastGui.ShowQuest(
             this.ToastMessage,
             new QuestToastOptions
-                { IconId = Icon, PlaySound = false, Position = this.Configuration.ToastPosition });
+                { IconId = Icon, PlaySound = false, Position = Service.Configuration.ToastPosition });
     }
 }

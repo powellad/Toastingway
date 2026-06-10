@@ -8,12 +8,8 @@ using Toastingway.Models;
 
 namespace Toastingway;
 
-public class ItemManager(NotifierManager notifierManager, Configuration configuration)
+public class ItemManager
 {
-    private NotifierManager NotifierManager { get; init; } = notifierManager;
-
-    private Configuration Configuration { get; init; } = configuration;
-
     private static readonly SimpleGameInventoryItemComparer Comparer = new();
 
     private readonly Dictionary<GameInventoryItem, uint> inMemoryCounts = new(comparer: Comparer);
@@ -101,17 +97,17 @@ public class ItemManager(NotifierManager notifierManager, Configuration configur
 
     private bool ShouldShowInventory(GameInventoryType incomingType)
     {
-        return this.Configuration.ShowInventory && this.IsPlayerInventory(incomingType);
+        return Service.Configuration.ShowInventory && this.IsPlayerInventory(incomingType);
     }
 
     private bool ShouldShowCurrency(GameInventoryType incomingType)
     {
-        return this.Configuration.ShowCurrency && incomingType == GameInventoryType.Currency;
+        return Service.Configuration.ShowCurrency && incomingType == GameInventoryType.Currency;
     }
 
     private bool ShouldShowCrystals(GameInventoryType incomingType)
     {
-        return this.Configuration.ShowCrystals && incomingType == GameInventoryType.Crystals;
+        return Service.Configuration.ShowCrystals && incomingType == GameInventoryType.Crystals;
     }
 
     public void OnItemRemoved(InventoryItemRemovedArgs data)
@@ -210,7 +206,7 @@ public class ItemManager(NotifierManager notifierManager, Configuration configur
         var quantity = this.inMemoryCounts.GetValueOrDefault(item);
 
         var request = new ItemNotification(item, quantity);
-        this.NotifierManager.RequestShowItem(request);
+        Service.NotifierManager.RequestShowItem(request);
     }
 
     public void Init()

@@ -8,10 +8,8 @@ using Toastingway.Models;
 
 namespace Toastingway;
 
-public abstract class Notifier(Configuration configuration)
+public abstract class Notifier
 {
-    protected Configuration Configuration { get; init; } = configuration;
-    
     protected Item LuminaItem { get; set; }
     
     protected ItemNotification? ItemNotification { get; set; }

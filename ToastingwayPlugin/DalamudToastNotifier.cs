@@ -2,7 +2,7 @@ using Dalamud.Interface.ImGuiNotification;
 
 namespace Toastingway;
 
-public class DalamudToastNotifier(Configuration configuration) : Notifier(configuration)
+public class DalamudToastNotifier : Notifier
 {
     protected override void ShowNotification()
     {        

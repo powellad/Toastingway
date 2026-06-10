@@ -3,17 +3,15 @@ using Toastingway.Models;
 
 namespace Toastingway;
 
-public class NotifierManager(Configuration configuration)
+public class NotifierManager
 {
-    private Configuration Configuration { get; init; } = configuration;
-
-    private DalamudToastNotifier DalamudToastNotifier { get; init; } = new(configuration);
+    private DalamudToastNotifier DalamudToastNotifier { get; init; } = new();
     
-    private InGameToastNotifier InGameToastNotifier { get; init; } = new(configuration);
+    private InGameToastNotifier InGameToastNotifier { get; init; } = new();
 
     public void RequestShowItem(ItemNotification itemNotification)
     {
-        switch (this.Configuration.NotifierProvider)
+        switch (Service.Configuration.NotifierProvider)
         {
             case NotifierProvider.InGame:
                 this.InGameToastNotifier.ShowItem(itemNotification);

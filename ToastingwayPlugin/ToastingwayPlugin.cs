@@ -11,23 +11,18 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 {
     private const string CommandName = "/tw";
 
-    public Configuration Configuration { get; init; }
-
-    public ItemManager ItemManager { get; init; }
-
     public readonly WindowSystem WindowSystem = new("Toastingway");
 
     private ConfigWindow ConfigWindow { get; init; }
 
-    private NotifierManager NotifierManager { get; init; }
-
     public ToastingwayPlugin(IDalamudPluginInterface pluginInterface)
     {
         pluginInterface.Create<Service>();
-        this.Configuration = Service.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-        this.NotifierManager = new NotifierManager(this.Configuration);
-        this.ItemManager = new ItemManager(this.NotifierManager, this.Configuration);
 
+        Service.Configuration = new Configuration();
+        Service.ItemManager = new ItemManager();
+        Service.NotifierManager = new NotifierManager();
+        
         this.ConfigWindow = new ConfigWindow(this);
 
         this.WindowSystem.AddWindow(this.ConfigWindow);
@@ -44,10 +39,10 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
         Service.PluginInterface.UiBuilder.OpenConfigUi += this.ToggleConfigUi;
         Service.PluginInterface.UiBuilder.OpenMainUi += this.ToggleConfigUi;
 
-        Service.GameInventory.InventoryChanged += this.ItemManager.OnItemChanged;
-        Service.GameInventory.ItemAddedExplicit += this.ItemManager.OnItemAdded;
-        Service.GameInventory.ItemMovedExplicit += this.ItemManager.OnItemMoved;
-        Service.GameInventory.ItemRemovedExplicit += this.ItemManager.OnItemRemoved;
+        Service.GameInventory.InventoryChanged += Service.ItemManager.OnItemChanged;
+        Service.GameInventory.ItemAddedExplicit += Service.ItemManager.OnItemAdded;
+        Service.GameInventory.ItemMovedExplicit += Service.ItemManager.OnItemMoved;
+        Service.GameInventory.ItemRemovedExplicit += Service.ItemManager.OnItemRemoved;
 
         Service.ClientState.Login += this.OnLogin;
     }
@@ -65,10 +60,10 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
         Service.PluginInterface.UiBuilder.OpenConfigUi -= this.ToggleConfigUi;
         Service.PluginInterface.UiBuilder.OpenMainUi -= this.ToggleConfigUi;
 
-        Service.GameInventory.ItemAddedExplicit -= this.ItemManager.OnItemAdded;
-        Service.GameInventory.ItemChangedExplicit -= this.ItemManager.OnItemChanged;
-        Service.GameInventory.ItemMovedExplicit -= this.ItemManager.OnItemMoved;
-        Service.GameInventory.ItemRemovedExplicit -= this.ItemManager.OnItemRemoved;
+        Service.GameInventory.ItemAddedExplicit -= Service.ItemManager.OnItemAdded;
+        Service.GameInventory.ItemChangedExplicit -= Service.ItemManager.OnItemChanged;
+        Service.GameInventory.ItemMovedExplicit -= Service.ItemManager.OnItemMoved;
+        Service.GameInventory.ItemRemovedExplicit -= Service.ItemManager.OnItemRemoved;
 
         if (Service.ClientState.IsLoggedIn)
         {
@@ -80,7 +75,7 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
 
     private void OnLogin()
     {
-        this.ItemManager.Init();
+        Service.ItemManager.Init();
     }
 
     private void OnCommand(string command, string args)
