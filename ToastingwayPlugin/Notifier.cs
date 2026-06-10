@@ -19,6 +19,7 @@ public abstract class Notifier(Configuration configuration)
     // Won't be null if it hits this part.
     protected string QuantityString => ItemNotification!.Quantity > 1 ? $" ({ItemNotification.Quantity:N0})" : string.Empty;
     
+    // Won't be null if it hits this part.
     protected string HqString => ItemNotification!.Item.IsHq ? " (HQ)" : string.Empty;
     
     protected string ToastMessage => $"{LuminaItem.Name}{HqString}{QuantityString}";

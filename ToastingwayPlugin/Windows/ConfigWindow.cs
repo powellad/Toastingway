@@ -5,6 +5,8 @@ using Dalamud.Game.Gui.Toast;
 using Dalamud.Interface.Windowing;
 using Dalamud.Bindings.ImGui;
 
+using Toastingway.Enums;
+
 namespace Toastingway.Windows;
 
 public class ConfigWindow : Window, IDisposable
@@ -59,6 +61,14 @@ public class ConfigWindow : Window, IDisposable
         if (ImGui.Combo("Toast position", ref selectedPosition, positionNames, positionNames.Length))
         {
             this.configuration.ToastPosition = (QuestToastPosition)selectedPosition;
+            this.configuration.Save();
+        }
+
+        var selectedProvider = (int)this.configuration.NotifierProvider;
+        var notifierNames = Enum.GetNames<NotifierProvider>();
+        if (ImGui.Combo("Notification Provider", ref selectedProvider, notifierNames, notifierNames.Length))
+        {
+            this.configuration.NotifierProvider = (NotifierProvider)selectedProvider;
             this.configuration.Save();
         }
     }

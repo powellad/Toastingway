@@ -30,4 +30,7 @@ public sealed class Service
 
     [PluginService]
     public static IFramework Framework { get; set; }
+    
+    [PluginService]
+    public static INotificationManager NotificationManager { get; set; }
 }
