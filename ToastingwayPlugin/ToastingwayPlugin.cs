@@ -19,7 +19,7 @@ public sealed class ToastingwayPlugin : IDalamudPlugin
     {
         pluginInterface.Create<Service>();
 
-        Service.Configuration = new Configuration();
+        Service.Configuration = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         Service.ItemManager = new ItemManager();
         Service.NotifierManager = new NotifierManager();
         

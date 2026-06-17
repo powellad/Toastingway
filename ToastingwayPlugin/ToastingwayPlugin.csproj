@@ -1,6 +1,6 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-      <AssemblyVersion>1.4.0.0</AssemblyVersion>
+      <AssemblyVersion>1.4.0.1</AssemblyVersion>
       <Description>The Toastingway plugin.</Description>
       <PackageProjectUrl>https://github.com/powellad/Toastingway</PackageProjectUrl>
       <IsPackable>false</IsPackable>
@@ -18,3 +18,4 @@
         </Content>
     </ItemGroup>
 </Project>
+ 
